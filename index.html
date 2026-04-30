@@ -1390,9 +1390,16 @@ async function cargarDesdeSheets() {
   const btn = document.getElementById('btnSheets');
   btn.textContent = '⏳ Cargando...'; btn.disabled = true;
   try {
-    const res  = await fetch(`${CONFIG.GAS_URL}?action=clientes`);
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
+    const url = `${CONFIG.GAS_URL}?action=clientes&t=${Date.now()}`;
+    console.log('[Sheets] Fetching:', url);
+    const res = await fetch(url);
+    console.log('[Sheets] Status:', res.status, res.statusText);
+    const text = await res.text();
+    console.log('[Sheets] Response:', text.substring(0, 300));
+    let json;
+    try { json = JSON.parse(text); }
+    catch(pe) { throw new Error('Respuesta no es JSON: ' + text.substring(0,100)); }
+    if (!json.ok) throw new Error(json.error || 'Error desconocido del servidor');
     const clientes = json.data.clientes.map(c => ({
       ...c,
       documentos: (c.documentos||[]).map(d => ({
@@ -1468,11 +1475,15 @@ async function syncPendientes() {
   txt.textContent = `⏳ Sincronizando ${pendientes.length} registro(s) con Sheets...`;
 
   try {
+    console.log('[Sync] Enviando', pendientes.length, 'registros...');
     const res  = await fetch(CONFIG.GAS_URL, {
       method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ action: 'guardar_lote', data: pendientes })
     });
-    const json = await res.json();
+    const text = await res.text();
+    console.log('[Sync] Respuesta:', text.substring(0,300));
+    const json = JSON.parse(text);
     if (!json.ok) throw new Error(json.error);
 
     // Marcar como sincronizados — eliminar los que salieron OK
@@ -1488,9 +1499,10 @@ async function syncPendientes() {
     setTimeout(() => { bar.className = 'sync-bar'; }, 4000);
     if (ok > 0) showToast(`☁️ ${ok} visita(s) enviadas a Sheets`, 'ok');
   } catch(err) {
+    console.error('[Sync] Error:', err.message, err);
     bar.className = 'sync-bar show offline';
-    txt.textContent = '⚠️ Error al sincronizar — se reintentará automáticamente';
-    setTimeout(() => { bar.className = 'sync-bar'; }, 5000);
+    txt.textContent = `⚠️ Error sync: ${err.message}`;
+    setTimeout(() => { bar.className = 'sync-bar'; }, 6000);
   }
 }
 
@@ -1500,7 +1512,11 @@ async function syncManual() {
     showToast('⚠️ Configura la URL del Apps Script en CONFIG.GAS_URL', 'err'); return;
   }
   const pendientes = getPendientes();
-  if (!pendientes.length) { showToast('✅ Todo sincronizado, no hay pendientes', 'ok'); return; }
+  if (!pendientes.length) {
+    showToast('✅ No hay pendientes — todo sincronizado', 'ok');
+    return;
+  }
+  showToast(`⏳ Sincronizando ${pendientes.length} registro(s)...`);
   await syncPendientes();
 }
 
