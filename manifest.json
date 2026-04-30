@@ -1,0 +1,15 @@
+{
+  "name": "Cobranza Tooltek",
+  "short_name": "Cobranza",
+  "description": "Gestión de visitas de cobranza",
+  "start_url": "/Gestion_cobranza/index.html",
+  "scope": "/Gestion_cobranza/",
+  "display": "standalone",
+  "background_color": "#1e4d8c",
+  "theme_color": "#1e4d8c",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
