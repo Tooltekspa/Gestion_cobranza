@@ -1462,8 +1462,7 @@ function setPendientes(arr) {
 // Enviar visita individual directo al guardar
 async function enviarVisitaSheets(v) {
   if (!navigator.onLine || !CONFIG.GAS_URL || CONFIG.GAS_URL.includes('PEGA_AQUI')) {
-    const p = getPendientes();
-    if (!p.find(x => x.id === v.id)) { p.push(v); setPendientes(p); }
+    marcarPendiente(v.id);
     return;
   }
   try {
@@ -1474,16 +1473,28 @@ async function enviarVisitaSheets(v) {
     });
     const json = JSON.parse(await res.text());
     if (json.ok) {
+      marcarSynced(v.id);
       showToast('☁️ Visita enviada a Sheets', 'ok');
-      setPendientes(getPendientes().filter(x => x.id !== v.id));
     } else {
       throw new Error(json.error || 'Error desconocido');
     }
   } catch(err) {
     console.error('[Sheets]', err.message);
-    const p = getPendientes();
-    if (!p.find(x => x.id === v.id)) { p.push(v); setPendientes(p); }
+    marcarPendiente(v.id);
   }
+}
+
+function marcarSynced(id) {
+  visitas = visitas.map(v => v.id === id ? {...v, synced: true} : v);
+  localStorage.setItem('vc', JSON.stringify(visitas));
+  setPendientes(getPendientes().filter(x => x.id !== id));
+  renderHist();
+}
+
+function marcarPendiente(id) {
+  const p = getPendientes();
+  const v = visitas.find(x => x.id === id);
+  if (v && !p.find(x => x.id === id)) { p.push(v); setPendientes(p); }
 }
 
 async function syncPendientes() {
@@ -1496,8 +1507,8 @@ async function syncPendientes() {
   bar.className = 'sync-bar show syncing';
   txt.textContent = `⏳ Sincronizando ${pendientes.length} registro(s)...`;
 
-  const enviados = [];
-  for (const v of pendientes) {
+  let enviados = 0;
+  for (const v of [...pendientes]) {
     try {
       const res = await fetch(CONFIG.GAS_URL, {
         method: 'POST',
@@ -1505,18 +1516,16 @@ async function syncPendientes() {
         body: JSON.stringify({ action: 'guardar_visita', data: v })
       });
       const json = JSON.parse(await res.text());
-      if (json.ok) enviados.push(v.id);
+      if (json.ok) { marcarSynced(v.id); enviados++; }
       else console.error('[Sync] Fallo', v.id, json.error);
     } catch(err) {
       console.error('[Sync] Error', v.id, err.message);
     }
   }
-  const restantes = pendientes.filter(v => !enviados.includes(v.id));
-  setPendientes(restantes);
-  if (enviados.length > 0) {
+  if (enviados > 0) {
     bar.className = 'sync-bar show synced';
-    txt.textContent = `✅ ${enviados.length} registro(s) sincronizados`;
-    showToast(`☁️ ${enviados.length} visita(s) enviadas a Sheets`, 'ok');
+    txt.textContent = `✅ ${enviados} registro(s) sincronizados`;
+    showToast(`☁️ ${enviados} visita(s) enviadas a Sheets`, 'ok');
     setTimeout(() => { bar.className = 'sync-bar'; }, 4000);
   } else {
     bar.className = 'sync-bar';
@@ -1567,14 +1576,12 @@ async function testConexion() {
 async function syncManual() {
   if (!navigator.onLine) { showToast('📵 Sin conexión a internet', 'err'); return; }
   if (!CONFIG.GAS_URL || CONFIG.GAS_URL.includes('PEGA_AQUI')) {
-    showToast('⚠️ Configura la URL del Apps Script en CONFIG.GAS_URL', 'err'); return;
+    showToast('⚠️ Configura la URL del Apps Script', 'err'); return;
   }
-  const pendientes = getPendientes();
-  if (!pendientes.length) {
-    showToast('✅ No hay pendientes — todo sincronizado', 'ok');
-    return;
-  }
-  showToast(`⏳ Sincronizando ${pendientes.length} registro(s)...`);
+  const noSync = visitas.filter(v => !v.synced);
+  if (!noSync.length) { showToast('✅ Todo sincronizado con Sheets', 'ok'); return; }
+  setPendientes(noSync);
+  showToast(`⏳ Reenviando ${noSync.length} registro(s)...`);
   await syncPendientes();
 }
 
