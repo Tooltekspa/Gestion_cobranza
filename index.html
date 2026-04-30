@@ -426,6 +426,7 @@ tr:hover td{background:var(--pale)}
   <div class="exp-bar">
     <button class="btn-exp csv" onclick="exportCSV()">📄 Exportar CSV</button>
     <button class="btn-exp" id="btnSync" onclick="syncManual()" style="background:var(--dk)">☁️ Sincronizar Sheets</button>
+    <button class="btn-exp" onclick="testConexion()" style="background:#666;font-size:.75rem">🔧 Test conexión</button>
   </div>
   <div class="hh">
     <h2>Registros de Visitas</h2>
@@ -1204,16 +1205,12 @@ function guardar(){
   visitas.unshift(v);
   localStorage.setItem('vc', JSON.stringify(visitas));
 
-  // Agregar a cola de pendientes para sync con Sheets
-  const pendientes = getPendientes();
-  pendientes.push(v);
-  setPendientes(pendientes);
-
   showToast('✅ Visita registrada', 'ok');
   resetForm();
-  // Intentar sync inmediato si hay conexión
-  setTimeout(syncPendientes, 1000);
   setTimeout(() => showTab('historial'), 900);
+
+  // Intentar enviar directo a Sheets
+  enviarVisitaSheets(v);
 }
 
 function resetForm(){
@@ -1450,59 +1447,120 @@ function cargarDesdeCache() {
    SINCRONIZACIÓN VISITAS → GOOGLE SHEETS
 ════════════════════════════════════════ */
 function getPendientes() {
-  return JSON.parse(localStorage.getItem('vc_pending') || '[]');
+  try { return JSON.parse(localStorage.getItem('vc_pending') || '[]'); }
+  catch(e) { return []; }
 }
 function setPendientes(arr) {
-  localStorage.setItem('vc_pending', JSON.stringify(arr));
-  const badge = document.getElementById('pendingBadge');
-  if (arr.length > 0) {
-    badge.textContent = arr.length;
-    badge.classList.add('show');
-  } else {
-    badge.classList.remove('show');
+  try {
+    localStorage.setItem('vc_pending', JSON.stringify(arr));
+    const badge = document.getElementById('pendingBadge');
+    if (arr.length > 0) { badge.textContent = arr.length; badge.classList.add('show'); }
+    else { badge.classList.remove('show'); }
+  } catch(e) {}
+}
+
+// Enviar visita individual directo al guardar
+async function enviarVisitaSheets(v) {
+  if (!navigator.onLine || !CONFIG.GAS_URL || CONFIG.GAS_URL.includes('PEGA_AQUI')) {
+    const p = getPendientes();
+    if (!p.find(x => x.id === v.id)) { p.push(v); setPendientes(p); }
+    return;
+  }
+  try {
+    const res = await fetch(CONFIG.GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'guardar_visita', data: v })
+    });
+    const json = JSON.parse(await res.text());
+    if (json.ok) {
+      showToast('☁️ Visita enviada a Sheets', 'ok');
+      setPendientes(getPendientes().filter(x => x.id !== v.id));
+    } else {
+      throw new Error(json.error || 'Error desconocido');
+    }
+  } catch(err) {
+    console.error('[Sheets]', err.message);
+    const p = getPendientes();
+    if (!p.find(x => x.id === v.id)) { p.push(v); setPendientes(p); }
   }
 }
 
 async function syncPendientes() {
-  if (!navigator.onLine) return;
-  if (!CONFIG.GAS_URL || CONFIG.GAS_URL.includes('PEGA_AQUI')) return;
+  if (!navigator.onLine || !CONFIG.GAS_URL || CONFIG.GAS_URL.includes('PEGA_AQUI')) return;
   const pendientes = getPendientes();
   if (!pendientes.length) return;
 
   const bar = document.getElementById('syncBar');
   const txt = document.getElementById('syncBarTxt');
   bar.className = 'sync-bar show syncing';
-  txt.textContent = `⏳ Sincronizando ${pendientes.length} registro(s) con Sheets...`;
+  txt.textContent = `⏳ Sincronizando ${pendientes.length} registro(s)...`;
 
+  const enviados = [];
+  for (const v of pendientes) {
+    try {
+      const res = await fetch(CONFIG.GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'guardar_visita', data: v })
+      });
+      const json = JSON.parse(await res.text());
+      if (json.ok) enviados.push(v.id);
+      else console.error('[Sync] Fallo', v.id, json.error);
+    } catch(err) {
+      console.error('[Sync] Error', v.id, err.message);
+    }
+  }
+  const restantes = pendientes.filter(v => !enviados.includes(v.id));
+  setPendientes(restantes);
+  if (enviados.length > 0) {
+    bar.className = 'sync-bar show synced';
+    txt.textContent = `✅ ${enviados.length} registro(s) sincronizados`;
+    showToast(`☁️ ${enviados.length} visita(s) enviadas a Sheets`, 'ok');
+    setTimeout(() => { bar.className = 'sync-bar'; }, 4000);
+  } else {
+    bar.className = 'sync-bar';
+  }
+}
+
+async function testConexion() {
+  if (!navigator.onLine) { showToast('📵 Sin internet', 'err'); return; }
+  showToast('🔧 Probando conexión...', '');
   try {
-    console.log('[Sync] Enviando', pendientes.length, 'registros...');
-    const res  = await fetch(CONFIG.GAS_URL, {
+    // Test 1: ping
+    const r1 = await fetch(`${CONFIG.GAS_URL}?action=ping&t=${Date.now()}`);
+    const t1 = await r1.text();
+    console.log('[Test] Ping:', t1);
+
+    // Test 2: guardar visita de prueba
+    const testVisita = {
+      id: 'TEST-' + Date.now(),
+      cliente: 'TEST_DIAGNOSTICO',
+      rut: '0-0',
+      fecha: '01-01-2000',
+      hora: '00:00',
+      cobrador: 'Sistema',
+      resultado: 'test',
+      timestamp: new Date().toISOString()
+    };
+    const r2 = await fetch(CONFIG.GAS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'guardar_lote', data: pendientes })
+      body: JSON.stringify({ action: 'guardar_visita', data: testVisita })
     });
-    const text = await res.text();
-    console.log('[Sync] Respuesta:', text.substring(0,300));
-    const json = JSON.parse(text);
-    if (!json.ok) throw new Error(json.error);
+    const t2 = await r2.text();
+    console.log('[Test] Guardar visita:', t2);
 
-    // Marcar como sincronizados — eliminar los que salieron OK
-    const fallidos = json.data.results
-      .filter(r => !r.ok)
-      .map(r => pendientes.find(p => p.id === r.id))
-      .filter(Boolean);
+    const j1 = JSON.parse(t1);
+    const j2 = JSON.parse(t2);
 
-    setPendientes(fallidos);
-    const ok = pendientes.length - fallidos.length;
-    bar.className = 'sync-bar show synced';
-    txt.textContent = `✅ ${ok} registro(s) sincronizados con Google Sheets`;
-    setTimeout(() => { bar.className = 'sync-bar'; }, 4000);
-    if (ok > 0) showToast(`☁️ ${ok} visita(s) enviadas a Sheets`, 'ok');
+    const msg = `Ping: ${j1.ok?'✅':'❌'} | Guardar: ${j2.ok?'✅':'❌ '+j2.error}`;
+    alert('Resultado diagnóstico:\n\n' + msg + '\n\nRevisa el Sheet de Registros para confirmar que aparece TEST_DIAGNOSTICO');
+    showToast(j2.ok ? '✅ Conexión OK — revisa el Sheet' : '❌ ' + j2.error, j2.ok?'ok':'err');
   } catch(err) {
-    console.error('[Sync] Error:', err.message, err);
-    bar.className = 'sync-bar show offline';
-    txt.textContent = `⚠️ Error sync: ${err.message}`;
-    setTimeout(() => { bar.className = 'sync-bar'; }, 6000);
+    console.error('[Test] Error:', err);
+    alert('Error de conexión:\n\n' + err.message);
+    showToast('❌ ' + err.message, 'err');
   }
 }
 
