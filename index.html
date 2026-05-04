@@ -1460,13 +1460,24 @@ function setPendientes(arr) {
 }
 
 // Enviar visita individual directo al guardar
+// Prepara visita sin foto/firma para enviar al Sheet (evita límite de URL)
+function prepararParaSync(v) {
+  const copia = {...v};
+  delete copia.foto;
+  delete copia.firma;
+  copia.tiene_foto = v.foto ? true : false;
+  copia.tiene_firma = v.firma ? true : false;
+  return copia;
+}
+
 async function enviarVisitaSheets(v) {
   if (!navigator.onLine || !CONFIG.GAS_URL || CONFIG.GAS_URL.includes('PEGA_AQUI')) {
     marcarPendiente(v.id);
     return;
   }
   try {
-    const gasUrl = CONFIG.GAS_URL + '?action=guardar_visita&data=' + encodeURIComponent(JSON.stringify(v));
+    const vSync = prepararParaSync(v);
+    const gasUrl = CONFIG.GAS_URL + '?action=guardar_visita&data=' + encodeURIComponent(JSON.stringify(vSync));
     const res = await fetch(gasUrl);
     const json = JSON.parse(await res.text());
     if (json.ok) {
@@ -1507,7 +1518,7 @@ async function syncPendientes() {
   let enviados = 0;
   for (const v of [...pendientes]) {
     try {
-      const url2 = CONFIG.GAS_URL + '?action=guardar_visita&data=' + encodeURIComponent(JSON.stringify(v));
+      const url2 = CONFIG.GAS_URL + '?action=guardar_visita&data=' + encodeURIComponent(JSON.stringify(prepararParaSync(v)));
       const res = await fetch(url2);
       const json = JSON.parse(await res.text());
       if (json.ok) { marcarSynced(v.id); enviados++; }
