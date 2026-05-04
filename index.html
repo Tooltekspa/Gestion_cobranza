@@ -1466,11 +1466,8 @@ async function enviarVisitaSheets(v) {
     return;
   }
   try {
-    const res = await fetch(CONFIG.GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'guardar_visita', data: v })
-    });
+    const gasUrl = CONFIG.GAS_URL + '?action=guardar_visita&data=' + encodeURIComponent(JSON.stringify(v));
+    const res = await fetch(gasUrl);
     const json = JSON.parse(await res.text());
     if (json.ok) {
       marcarSynced(v.id);
@@ -1510,11 +1507,8 @@ async function syncPendientes() {
   let enviados = 0;
   for (const v of [...pendientes]) {
     try {
-      const res = await fetch(CONFIG.GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'guardar_visita', data: v })
-      });
+      const url2 = CONFIG.GAS_URL + '?action=guardar_visita&data=' + encodeURIComponent(JSON.stringify(v));
+      const res = await fetch(url2);
       const json = JSON.parse(await res.text());
       if (json.ok) { marcarSynced(v.id); enviados++; }
       else console.error('[Sync] Fallo', v.id, json.error);
@@ -1552,11 +1546,7 @@ async function testConexion() {
       resultado: 'test',
       timestamp: new Date().toISOString()
     };
-    const r2 = await fetch(CONFIG.GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'guardar_visita', data: testVisita })
-    });
+    const r2 = await fetch(CONFIG.GAS_URL + '?action=guardar_visita&data=' + encodeURIComponent(JSON.stringify(testVisita)));
     const t2 = await r2.text();
     console.log('[Test] Guardar visita:', t2);
 
@@ -1574,15 +1564,17 @@ async function testConexion() {
 }
 
 async function syncManual() {
-  if (!navigator.onLine) { showToast('📵 Sin conexión a internet', 'err'); return; }
+  if (!navigator.onLine) { showToast('📵 Sin conexión', 'err'); return; }
   if (!CONFIG.GAS_URL || CONFIG.GAS_URL.includes('PEGA_AQUI')) {
     showToast('⚠️ Configura la URL del Apps Script', 'err'); return;
   }
-  const noSync = visitas.filter(v => !v.synced);
-  if (!noSync.length) { showToast('✅ Todo sincronizado con Sheets', 'ok'); return; }
-  setPendientes(noSync);
-  showToast(`⏳ Reenviando ${noSync.length} registro(s)...`);
-  await syncPendientes();
+
+  // DEBUG — mostrar estado real de visitas
+  const total = visitas.length;
+  const conSync = visitas.filter(v => v.synced).length;
+  const sinSync = visitas.filter(v => !v.synced).length;
+  const primera = visitas[0] ? JSON.stringify(visitas[0]).substring(0,200) : 'sin visitas';
+  alert(`DEBUG ESTADO:\nTotal visitas: ${total}\nCon synced: ${conSync}\nSin synced: ${sinSync}\n\nPrimera visita:\n${primera}`);
 }
 
 /* ── TOAST ── */
