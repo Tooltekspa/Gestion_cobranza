@@ -244,8 +244,8 @@ tr:hover td{background:var(--pale)}
     <div class="login-sub">Ingresa tus credenciales para continuar</div>
     <div class="login-field">
       <label>Usuario</label>
-      <input type="text" id="loginUsuario" placeholder="tu usuario" autocomplete="username"
-        onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+      <input type="text" id="loginUser" placeholder="tu usuario" autocomplete="username"
+        onkeydown="if(event.key==='Enter'){document.getElementById('loginPass').focus();}">
     </div>
     <div class="login-field">
       <label>Contraseña</label>
