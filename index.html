@@ -198,6 +198,28 @@ tr:hover td{background:var(--pale)}
 .login-intentos{font-size:.72rem;color:var(--soft);margin-top:8px}
 .user-badge{background:var(--pale);border:1px solid var(--bdr);border-radius:8px;padding:5px 10px;font-size:.75rem;color:var(--dk);display:flex;align-items:center;gap:6px;cursor:pointer}
 .user-badge:hover{background:var(--bg2)}
+
+/* ADMIN PANEL */
+.admin-section{background:#fff;border-radius:var(--r);box-shadow:var(--sh);margin-bottom:14px;overflow:hidden}
+.admin-sh{background:linear-gradient(90deg,var(--pale),#fff);border-bottom:2px solid var(--bdr);padding:10px 16px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--dk);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.admin-body{padding:14px}
+.user-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.user-table th{background:var(--pale);padding:8px 10px;text-align:left;font-size:.67rem;text-transform:uppercase;letter-spacing:.8px;color:var(--dk);font-weight:700;border-bottom:2px solid var(--bdr)}
+.user-table td{padding:8px 10px;border-bottom:1px solid var(--bg2)}
+.badge-rol{display:inline-block;padding:2px 8px;border-radius:100px;font-size:.67rem;font-weight:700}
+.rol-admin{background:#e8f1fb;color:var(--dk)}.rol-cobrador{background:var(--bg2);color:var(--soft)}
+.badge-activo{display:inline-block;padding:2px 8px;border-radius:100px;font-size:.67rem;font-weight:700}
+.activo-si{background:#eafaf1;color:var(--green)}.activo-no{background:#fdedec;color:var(--red)}
+.log-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.log-table th{background:var(--pale);padding:7px 9px;text-align:left;font-size:.65rem;text-transform:uppercase;letter-spacing:.8px;color:var(--dk);font-weight:700;border-bottom:2px solid var(--bdr);white-space:nowrap}
+.log-table td{padding:7px 9px;border-bottom:1px solid var(--bg2);white-space:nowrap}
+.log-login{color:var(--green);font-weight:700}.log-logout{color:var(--soft)}.log-fail{color:var(--red);font-weight:700}
+.btn-admin{background:var(--dk);color:#fff;border:none;border-radius:7px;padding:7px 13px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:"DM Sans",sans-serif;transition:opacity .2s}
+.btn-admin:hover{opacity:.85}
+.btn-toggle{padding:4px 10px;border-radius:100px;font-size:.68rem;font-weight:700;cursor:pointer;border:none;font-family:"DM Sans",sans-serif}
+.btn-toggle.si{background:#fdedec;color:var(--red)}.btn-toggle.no{background:#eafaf1;color:var(--green)}
+.nuevo-user-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bg2)}
+@media(max-width:600px){.nuevo-user-form{grid-template-columns:1fr}.log-table{font-size:.7rem}}
 /* TOAST */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--dk);color:#fff;padding:11px 22px;border-radius:100px;font-size:.85rem;font-weight:500;box-shadow:var(--sh2);transition:transform .35s cubic-bezier(.34,1.56,.64,1);z-index:9998;white-space:nowrap}
 .toast.show{transform:translateX(-50%) translateY(0)}.toast.ok{background:var(--green)}.toast.err{background:var(--red)}
@@ -278,6 +300,7 @@ tr:hover td{background:var(--pale)}
 <div class="tabs">
   <div class="tab active" onclick="showTab('nueva')">📝 Nueva Visita</div>
   <div class="tab" onclick="showTab('historial')">📋 Historial <span class="pending-badge" id="pendingBadge">0</span></div>
+  <div class="tab" id="tabAdmin" onclick="showTab('admin')" style="display:none">🔧 Admin</div>
 </div>
 
 <main>
@@ -482,6 +505,58 @@ tr:hover td{background:var(--pale)}
   </div>
   <div id="lista"></div>
 </div>
+<!-- ══════════ ADMIN ══════════ -->
+<div class="panel" id="panel-admin">
+
+  <!-- Usuarios -->
+  <div class="admin-section">
+    <div class="admin-sh">
+      👥 Usuarios del sistema
+      <button class="btn-admin" onclick="toggleNuevoUser()">+ Nuevo usuario</button>
+    </div>
+    <div class="admin-body">
+      <div id="nuevoUserForm" style="display:none" class="nuevo-user-form">
+        <div class="field"><label>Usuario</label><input type="text" id="nuUsuario" placeholder="juan.perez" autocapitalize="none"></div>
+        <div class="field"><label>Contraseña</label><input type="text" id="nuClave" placeholder="Clave segura"></div>
+        <div class="field"><label>Nombre completo</label><input type="text" id="nuNombre" placeholder="Juan Pérez"></div>
+        <div class="field"><label>Rol</label>
+          <select id="nuRol">
+            <option value="cobrador">Cobrador</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1;display:flex;gap:8px">
+          <button class="btn-admin" onclick="crearUsuario()">💾 Guardar usuario</button>
+          <button class="btn-admin" onclick="toggleNuevoUser()" style="background:var(--soft)">Cancelar</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;margin-top:8px">
+        <table class="user-table" id="tablaUsuarios">
+          <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Último login</th><th></th></tr></thead>
+          <tbody id="usuariosBody"><tr><td colspan="6" style="text-align:center;padding:20px;color:var(--soft)">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log de sesiones -->
+  <div class="admin-section">
+    <div class="admin-sh">
+      📋 Registro de accesos
+      <button class="btn-admin" onclick="cargarSesiones()">🔄 Actualizar</button>
+    </div>
+    <div class="admin-body">
+      <div style="overflow-x:auto">
+        <table class="log-table" id="tablaLog">
+          <thead><tr><th>Fecha</th><th>Hora</th><th>Usuario</th><th>Nombre</th><th>Tipo</th></tr></thead>
+          <tbody id="sesionesBody"><tr><td colspan="5" style="text-align:center;padding:20px;color:var(--soft)">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
 </main>
 
 <div class="toast" id="toast"></div>
@@ -1397,7 +1472,7 @@ function exportCSV(){
 /* ════════════════════════════════════════
    PWA — SERVICE WORKER
 ════════════════════════════════════════ */
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && location.hostname === 'tooltekspa.github.io') {
   navigator.serviceWorker.register('/Gestion_cobranza/sw.js', { scope: '/Gestion_cobranza/' }).then(reg => {
     navigator.serviceWorker.addEventListener('message', e => {
       if (e.data && e.data.type === 'DO_SYNC') syncPendientes();
@@ -1652,14 +1727,14 @@ function verificarSesionInicial() {
       .then(r => r.json())
       .then(j => {
         if (j.ok && j.data && j.data.usuario) {
-          mostrarApp(_usuario || j.data.nombre);
+          mostrarApp(_usuario || j.data.nombre, j.data.rol||sessionStorage.getItem('gc_rol')||'cobrador');
         } else {
           cerrarSesionApp(false);
         }
       })
       .catch(() => {
         // Sin red → confiar en el token guardado
-        if (_token) mostrarApp(_usuario);
+        if (_token) mostrarApp(_usuario, sessionStorage.getItem('gc_rol')||'cobrador');
         else mostrarLogin();
       });
   } else {
@@ -1674,11 +1749,7 @@ function mostrarLogin() {
   if (inp) setTimeout(() => inp.focus(), 300);
 }
 
-function mostrarApp(nombre) {
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('userBadge').style.display = 'flex';
-  document.getElementById('userNombre').textContent = nombre || _usuario;
-}
+// mostrarApp movida al bloque admin
 
 async function doLogin() {
   const now = Date.now();
@@ -1707,10 +1778,11 @@ async function doLogin() {
       _usuario = json.data.nombre || user;
       sessionStorage.setItem('gc_token', _token);
       sessionStorage.setItem('gc_usuario', _usuario);
+      sessionStorage.setItem('gc_rol', json.data.rol||'cobrador');
       _loginIntentos = 0;
       document.getElementById('loginPass').value = '';
       document.getElementById('loginUser').value = '';
-      mostrarApp(_usuario);
+      mostrarApp(_usuario, sessionStorage.getItem('gc_rol')||'cobrador');
       showToast(`✅ Bienvenido, ${_usuario}`, 'ok');
     } else {
       _loginIntentos++;
@@ -1746,6 +1818,115 @@ function cerrarSesionApp(confirmar = true) {
   sessionStorage.removeItem('gc_usuario');
   mostrarLogin();
   showToast('Sesión cerrada', '');
+}
+
+/* ════════════════════════════════════════
+   PANEL ADMINISTRADOR
+════════════════════════════════════════ */
+let _esAdmin = false;
+
+function mostrarApp(nombre, rol) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('userBadge').style.display = 'flex';
+  document.getElementById('userNombre').textContent = nombre || _usuario;
+  _esAdmin = (rol === 'admin');
+  const tabAdmin = document.getElementById('tabAdmin');
+  if (tabAdmin) tabAdmin.style.display = _esAdmin ? 'block' : 'none';
+}
+
+function showTab(t) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.getElementById('panel-' + t).classList.add('active');
+  const tabs = document.querySelectorAll('.tab');
+  const idx = t === 'nueva' ? 0 : t === 'historial' ? 1 : 2;
+  if (tabs[idx]) tabs[idx].classList.add('active');
+  if (t === 'historial') renderHist();
+  if (t === 'admin') { cargarUsuarios(); cargarSesiones(); }
+}
+
+async function cargarUsuarios() {
+  try {
+    const res  = await fetch(`${CONFIG.GAS_URL}?action=usuarios&token=${encodeURIComponent(_token)}`);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error);
+    const tbody = document.getElementById('usuariosBody');
+    if (!json.data.usuarios.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--soft)">Sin usuarios</td></tr>';
+      return;
+    }
+    tbody.innerHTML = json.data.usuarios.map(u => `
+      <tr>
+        <td><strong>${u.usuario}</strong></td>
+        <td>${u.nombre}</td>
+        <td><span class="badge-rol rol-${u.rol}">${u.rol}</span></td>
+        <td><span class="badge-activo activo-${u.activo?'si':'no'}">${u.activo?'Activo':'Inactivo'}</span></td>
+        <td style="font-size:.75rem;color:var(--soft)">${u.ultimoLogin||'—'}</td>
+        <td>${u.usuario!=='admin'?`<button class="btn-toggle ${u.activo?'si':'no'}" onclick="toggleUsuario('${u.usuario}')">${u.activo?'Desactivar':'Activar'}</button>`:''}</td>
+      </tr>`).join('');
+  } catch(err) {
+    showToast('Error al cargar usuarios: ' + err.message, 'err');
+  }
+}
+
+async function cargarSesiones() {
+  try {
+    const res  = await fetch(`${CONFIG.GAS_URL}?action=sesiones&token=${encodeURIComponent(_token)}`);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error);
+    const tbody = document.getElementById('sesionesBody');
+    if (!json.data.sesiones.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--soft)">Sin registros</td></tr>';
+      return;
+    }
+    const clsTipo = t => t==='LOGIN'?'log-login':t==='LOGOUT'?'log-logout':'log-fail';
+    tbody.innerHTML = json.data.sesiones.map(s => `
+      <tr>
+        <td>${s.fecha}</td>
+        <td>${s.hora}</td>
+        <td><strong>${s.usuario}</strong></td>
+        <td>${s.nombre}</td>
+        <td><span class="${clsTipo(s.tipo)}">${s.tipo}</span></td>
+      </tr>`).join('');
+  } catch(err) {
+    showToast('Error al cargar sesiones: ' + err.message, 'err');
+  }
+}
+
+async function toggleUsuario(usuario) {
+  if (!confirm(`¿Cambiar estado del usuario "${usuario}"?`)) return;
+  try {
+    const res  = await fetch(`${CONFIG.GAS_URL}?action=toggle_usuario&token=${encodeURIComponent(_token)}&usuario=${encodeURIComponent(usuario)}`);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error);
+    showToast(`✅ Usuario ${json.data.activo ? 'activado' : 'desactivado'}`, 'ok');
+    cargarUsuarios();
+  } catch(err) { showToast('Error: ' + err.message, 'err'); }
+}
+
+function toggleNuevoUser() {
+  const f = document.getElementById('nuevoUserForm');
+  f.style.display = f.style.display === 'none' ? 'grid' : 'none';
+}
+
+async function crearUsuario() {
+  const usuario = document.getElementById('nuUsuario').value.trim();
+  const clave   = document.getElementById('nuClave').value.trim();
+  const nombre  = document.getElementById('nuNombre').value.trim();
+  const rol     = document.getElementById('nuRol').value;
+  if (!usuario || !clave || !nombre) { showToast('⚠️ Completa todos los campos', 'err'); return; }
+  try {
+    const url = `${CONFIG.GAS_URL}?action=crear_usuario&token=${encodeURIComponent(_token)}`
+      + `&nuevo_usuario=${encodeURIComponent(usuario)}&nueva_clave=${encodeURIComponent(clave)}`
+      + `&nuevo_nombre=${encodeURIComponent(nombre)}&nuevo_rol=${encodeURIComponent(rol)}`;
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error);
+    showToast('✅ Usuario creado', 'ok');
+    ['nuUsuario','nuClave','nuNombre'].forEach(id => document.getElementById(id).value = '');
+    toggleNuevoUser();
+    cargarUsuarios();
+  } catch(err) { showToast('Error: ' + err.message, 'err'); }
 }
 
 /* ── TOAST ── */
