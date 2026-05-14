@@ -1726,19 +1726,21 @@ let _bloqueadoHasta = 0;
 
 function verificarSesionInicial() {
   if (_token) {
-    // Verificar que el token siga válido en el servidor
     fetch(`${CONFIG.GAS_URL}?action=verificar&token=${encodeURIComponent(_token)}`)
       .then(r => r.json())
       .then(j => {
         if (j.ok && j.data && j.data.usuario) {
-          mostrarApp(_usuario || j.data.nombre, j.data.rol||sessionStorage.getItem('gc_rol')||'cobrador');
+          // Guardar rol actualizado desde servidor
+          const rol = j.data.rol || sessionStorage.getItem('gc_rol') || 'cobrador';
+          sessionStorage.setItem('gc_rol', rol);
+          mostrarApp(j.data.nombre || _usuario, rol);
         } else {
           cerrarSesionApp(false);
         }
       })
       .catch(() => {
-        // Sin red → confiar en el token guardado
-        if (_token) mostrarApp(_usuario, sessionStorage.getItem('gc_rol')||'cobrador');
+        // Sin red → usar datos guardados
+        if (_token) mostrarApp(_usuario, sessionStorage.getItem('gc_rol') || 'cobrador');
         else mostrarLogin();
       });
   } else {
