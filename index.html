@@ -1771,7 +1771,10 @@ async function doLogin() {
   try {
     const url = `${CONFIG.GAS_URL}?action=login&usuario=${encodeURIComponent(user)}&clave=${encodeURIComponent(pass)}`;
     const res = await fetch(url);
-    const json = await res.json();
+    const text = await res.text();
+    // DEBUG TEMPORAL
+    alert('Respuesta servidor:\n' + text.substring(0, 400));
+    const json = JSON.parse(text);
 
     if (json.ok && json.data && json.data.token) {
       _token = json.data.token;
