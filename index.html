@@ -300,6 +300,7 @@ tr:hover td{background:var(--pale)}
 <div class="tabs">
   <div class="tab active" onclick="showTab('nueva')">📝 Nueva Visita</div>
   <div class="tab" onclick="showTab('historial')">📋 Historial <span class="pending-badge" id="pendingBadge">0</span></div>
+  <div class="tab" id="tabLlamadas" onclick="showTab('llamadas')" style="display:none">📞 Llamadas</div>
   <div class="tab" id="tabAdmin" onclick="showTab('admin')" style="display:none">🔧 Admin</div>
 </div>
 
@@ -555,6 +556,112 @@ tr:hover td{background:var(--pale)}
     </div>
   </div>
 
+</div>
+
+<!-- ══════════ LLAMADAS TELEFÓNICAS ══════════ -->
+<div class="panel" id="panel-llamadas">
+  <div class="banner">
+    <span style="font-size:2rem">📞</span>
+    <div class="banner-txt">
+      <strong id="telBannerTxt">Cargar mi cartera telefónica</strong>
+      <span id="telBannerSub">Clientes asignados para cobranza telefónica</span>
+    </div>
+    <button class="btn-load" id="btnTelLoad" onclick="cargarTelefonica()">☁️ Cargar cartera</button>
+  </div>
+
+  <div class="db-bar">
+    <div class="dot err" id="telDot"></div>
+    <span id="telDbTxt">Sin cartera cargada</span>
+  </div>
+
+  <div class="card" id="telSearchCard" style="display:none">
+    <div class="ctitle">🔍 Buscar Cliente por RUT o Nombre</div>
+    <div class="cbody">
+      <div class="field">
+        <label>RUT o Nombre *</label>
+        <div class="swrap">
+          <input type="text" id="telRutS" placeholder="Buscar cliente..." autocomplete="off"
+            oninput="buscarTel(this.value)" onblur="setTimeout(closeSugTel,220)">
+          <div class="sugbox" id="telSugBox"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="no-db" id="telNoDB">
+    <div class="ic">📞</div>
+    <p>Carga tu cartera telefónica para registrar llamadas de cobranza</p>
+    <button class="btn-load2" onclick="cargarTelefonica()">☁️ Cargar cartera</button>
+  </div>
+
+  <div class="ficha" id="telFicha">
+    <span class="f-rut" id="telFRut"></span>
+    <div class="f-name" id="telFName"></div>
+    <div class="f-grid">
+      <div class="f-item"><label>Dirección</label><p id="telFDir">—</p></div>
+      <div class="f-item"><label>Ciudad</label><p id="telFCiu">—</p></div>
+      <div class="f-item"><label>Email</label><p id="telFEmail">—</p></div>
+      <div class="f-item"><label>Teléfono</label><p id="telFTel">—</p></div>
+    </div>
+  </div>
+
+  <div class="deuda-card" id="telDeudaCard">
+    <div class="dh">
+      <h3>💰 Facturas Pendientes</h3>
+      <div class="dh-right">
+        <span class="badge-total" id="telTotalBadge"></span>
+        <span class="badge-sel" id="telSelBadge"></span>
+      </div>
+    </div>
+    <div class="twrap">
+      <table>
+        <thead><tr>
+          <th><input type="checkbox" id="telChkAll" onchange="toggleAllTel(this)" class="chk-fac"></th>
+          <th>Documento</th><th>Vencimiento</th><th>Días</th><th class="td-r">Monto</th>
+        </tr></thead>
+        <tbody id="telDeudaBody"></tbody>
+      </table>
+    </div>
+    <div class="resumen-sel" id="telResumenSel">
+      <div class="rs-txt"><strong id="telRsCount">0 facturas</strong> seleccionadas</div>
+      <div class="rs-monto" id="telRsMonto">$0</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">📞 Datos de la Llamada</div>
+    <div class="cbody">
+      <div class="r2">
+        <div class="field"><label>Fecha *</label><input type="date" id="telFecha"></div>
+        <div class="field"><label>Hora</label><input type="time" id="telHora"></div>
+      </div>
+      <div class="field"><label>Resultado *</label>
+        <select id="telResultado">
+          <option value="">Seleccionar...</option>
+          <option>Contactado</option>
+          <option>No contesta</option>
+          <option>Buzón de voz</option>
+          <option>Número equivocado</option>
+          <option>Promesa de pago</option>
+          <option>Pago realizado</option>
+          <option>Negativa de pago</option>
+          <option>Volver a llamar</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="r2">
+        <div class="field"><label>Monto Comprometido ($)</label><input type="text" id="telMonto" placeholder="0" inputmode="numeric" oninput="fmtMontoTel(this)" autocomplete="off"></div>
+        <div class="field"><label>Fecha Compromiso</label><input type="date" id="telFechaPromesa"></div>
+      </div>
+      <div class="field"><label>Próxima Llamada</label><input type="date" id="telProx"></div>
+      <div class="field"><label>Observaciones</label>
+        <textarea id="telComentarios" placeholder="Detalle de la conversación, acuerdos..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <input type="hidden" id="telCNombre"><input type="hidden" id="telCRut">
+  <button class="btn-save" onclick="guardarLlamadaApp()">📞 Registrar Llamada</button>
 </div>
 
 </main>
@@ -1930,6 +2037,402 @@ function showToast(msg,type=""){
   t.textContent=msg; t.className="toast"+(type?" "+type:"");
   t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),3000);
 }
+</script>
+
+<script>
+/* ════════════════════════════════════════
+   AMPLIACIÓN: admin ve todo · sync real · llamadas
+   (este bloque va DESPUÉS del script original)
+════════════════════════════════════════ */
+let DBTel = [], sugTel = [], CATel = null, factSelTel = [];
+let registrosRemotos = [];
+let _esTel = false;
+
+/* ── Mostrar app: ahora también muestra pestaña Llamadas ── */
+function mostrarApp(nombre, rol) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('userBadge').style.display = 'flex';
+  document.getElementById('userNombre').textContent = nombre || _usuario;
+  _esAdmin = (rol === 'admin');
+  _esTel = sessionStorage.getItem('gc_tel') === '1';
+  const tabAdmin = document.getElementById('tabAdmin');
+  if (tabAdmin) tabAdmin.style.display = _esAdmin ? 'block' : 'none';
+  const tabLlam = document.getElementById('tabLlamadas');
+  if (tabLlam) tabLlam.style.display = _esTel ? 'block' : 'none';
+}
+
+/* ── Login: captura el flag telefónica ── */
+async function doLogin() {
+  const now = Date.now();
+  if (now < _bloqueadoHasta) {
+    const seg = Math.ceil((_bloqueadoHasta - now) / 1000);
+    mostrarErrorLogin(`Demasiados intentos. Espera ${seg}s`); return;
+  }
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value.trim();
+  if (!user || !pass) { mostrarErrorLogin('Ingresa usuario y contraseña'); return; }
+  const btn = document.getElementById('btnLogin');
+  btn.textContent = 'Verificando...'; btn.disabled = true;
+  ocultarErrorLogin();
+  try {
+    const url = `${CONFIG.GAS_URL}?action=login&usuario=${encodeURIComponent(user)}&clave=${encodeURIComponent(pass)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.ok && json.data && json.data.token) {
+      _token = json.data.token;
+      _usuario = json.data.nombre || user;
+      sessionStorage.setItem('gc_token', _token);
+      sessionStorage.setItem('gc_usuario', _usuario);
+      sessionStorage.setItem('gc_rol', json.data.rol||'cobrador');
+      sessionStorage.setItem('gc_tel', json.data.telefonica ? '1' : '0');
+      _loginIntentos = 0;
+      document.getElementById('loginPass').value = '';
+      document.getElementById('loginUser').value = '';
+      mostrarApp(_usuario, sessionStorage.getItem('gc_rol')||'cobrador');
+      showToast(`✅ Bienvenido, ${_usuario}`, 'ok');
+    } else {
+      _loginIntentos++;
+      if (_loginIntentos >= 3) {
+        _bloqueadoHasta = Date.now() + 5 * 60 * 1000;
+        mostrarErrorLogin('3 intentos fallidos. Bloqueado por 5 minutos.');
+      } else {
+        mostrarErrorLogin(`${json.error || 'Credenciales incorrectas'} (${_loginIntentos}/3)`);
+      }
+    }
+  } catch(err) {
+    mostrarErrorLogin('Sin conexión — verifica el internet');
+  } finally {
+    btn.textContent = 'Ingresar'; btn.disabled = false;
+  }
+}
+
+/* ── Verificar sesión guardada: recupera flag telefónica ── */
+function verificarSesionInicial() {
+  if (_token) {
+    fetch(`${CONFIG.GAS_URL}?action=verificar&token=${encodeURIComponent(_token)}`)
+      .then(r => r.json())
+      .then(j => {
+        if (j.ok && j.data && j.data.usuario) {
+          const rol = j.data.rol || sessionStorage.getItem('gc_rol') || 'cobrador';
+          sessionStorage.setItem('gc_rol', rol);
+          sessionStorage.setItem('gc_tel', j.data.telefonica ? '1' : '0');
+          mostrarApp(j.data.nombre || _usuario, rol);
+        } else {
+          cerrarSesionApp(false);
+        }
+      })
+      .catch(() => {
+        if (_token) mostrarApp(_usuario, sessionStorage.getItem('gc_rol') || 'cobrador');
+        else mostrarLogin();
+      });
+  } else {
+    mostrarLogin();
+  }
+}
+
+/* ── showTab: maneja 'llamadas' y carga registros del admin ── */
+function showTab(t){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.getElementById("panel-"+t).classList.add("active");
+  const tabMap = {nueva:0, historial:1, llamadas:2, admin:3};
+  const tabs = document.querySelectorAll(".tab");
+  if(tabs[tabMap[t]]) tabs[tabMap[t]].classList.add("active");
+  if(t==="historial"){ if(_esAdmin) cargarRegistrosAdmin(); else renderHist(); }
+  if(t==="admin"){ cargarUsuarios(); cargarSesiones(); }
+  if(t==="llamadas"){
+    const f=document.getElementById('telFecha'); if(f&&!f.value) f.value=new Date().toISOString().split('T')[0];
+    const h=document.getElementById('telHora'); if(h&&!h.value) h.value=new Date().toTimeString().slice(0,5);
+  }
+}
+
+/* ── ADMIN: traer TODOS los registros (visitas + llamadas) desde Sheets ── */
+async function cargarRegistrosAdmin(){
+  if(!navigator.onLine){ showToast('📵 Sin conexión — mostrando registros locales','err'); renderHist(); return; }
+  try{
+    const [rR, rL] = await Promise.all([
+      fetch(`${CONFIG.GAS_URL}?action=registros&token=${encodeURIComponent(_token)}&t=${Date.now()}`).then(r=>r.json()),
+      fetch(`${CONFIG.GAS_URL}?action=llamadas&token=${encodeURIComponent(_token)}&t=${Date.now()}`).then(r=>r.json())
+    ]);
+    const visitasR = (rR.ok ? rR.data.registros : []) || [];
+    const llamadasR = (rL.ok ? rL.data.llamadas : []) || [];
+    registrosRemotos = [...visitasR, ...llamadasR];
+    renderHist();
+  }catch(err){
+    showToast('Error al cargar registros: '+err.message,'err');
+    renderHist();
+  }
+}
+
+function getVisitaById(id){
+  return registrosRemotos.find(x=>String(x.id)===String(id)) || visitas.find(x=>String(x.id)===String(id));
+}
+
+/* ── renderHist: admin usa registros remotos; cobrador usa locales ── */
+function renderHist(f=""){
+  const usarRemoto = _esAdmin && registrosRemotos.length > 0;
+  const fuente = usarRemoto ? registrosRemotos : visitas;
+  const lista = f
+    ? fuente.filter(v => (v.cliente||"").toLowerCase().includes(f.toLowerCase())
+        || (v.rut||"").replace(/[.\-]/g,"").includes(f.replace(/[.\-]/g,""))
+        || (v.cobrador||v._usuario||"").toLowerCase().includes(f.toLowerCase()))
+    : fuente;
+  const pagos = fuente.filter(v=>v.resultado==="Pago realizado").length;
+  const proms = fuente.filter(v=>v.resultado==="Promesa de pago").length;
+  document.getElementById("statsGrid").innerHTML=`
+    <div class="stat"><div class="num">${fuente.length}</div><div class="lbl">${usarRemoto?'Todos los registros':'Total Visitas'}</div></div>
+    <div class="stat"><div class="num" style="color:var(--green)">${pagos}</div><div class="lbl">Pagos</div></div>
+    <div class="stat"><div class="num" style="color:#b7860b">${proms}</div><div class="lbl">Promesas</div></div>`;
+  const cnt=document.getElementById("lista");
+  if(!lista.length){cnt.innerHTML=`<div class="empty"><div class="ic">📭</div><p>${f?"Sin resultados":"No hay registros aún"}</p></div>`;return;}
+  const bc={"Pago realizado":"bp","Promesa de pago":"bpr","Cliente ausente":"ba","Negativa de pago":"bn","Reagendar visita":"br","Volver a llamar":"br","Otro":"bo"};
+  const vc2={"Pago realizado":"vp","Promesa de pago":"vpr","Cliente ausente":"va","Negativa de pago":"vn","Reagendar visita":"vr","Volver a llamar":"vr"};
+  cnt.innerHTML=lista.map(v=>`
+    <div class="vc ${vc2[v.resultado]||""}">
+      <div class="vh" onclick="toggleV('${v.id}')">
+        <div><div class="vn2">${v._tipo==='llamada'?'📞 ':''}${v.cliente}</div>
+        <div class="vm">${v.rut?v.rut+" · ":""}${v.fecha}${v.hora?" · "+v.hora:""}${(v.cobrador||v._usuario)?" · "+(v.cobrador||v._usuario):""}</div></div>
+        <span class="bdg ${bc[v.resultado]||"bo"}">${v.resultado}</span>
+      </div>
+      <div class="vb" id="vb-${v.id}">
+        <div class="dg">
+          ${v._remote&&v._usuario?`<div class="di"><label>Registrado por</label><p style="font-weight:700;color:var(--dk)">${v._usuario}</p></div>`:""}
+          ${v._tipo==='llamada'?`<div class="di"><label>Tipo</label><p>📞 Llamada telefónica</p></div>`:""}
+          ${v.rut?`<div class="di"><label>RUT</label><p>${v.rut}</p></div>`:""}
+          ${v.direccion?`<div class="di"><label>Dirección</label><p>${v.direccion}${v.ciudad?", "+v.ciudad:""}</p></div>`:""}
+          ${v.email?`<div class="di"><label>Correo</label><p>${v.email}</p></div>`:""}
+          ${v.telefono?`<div class="di"><label>Teléfono</label><p>${v.telefono}</p></div>`:""}
+          ${v.motivo?`<div class="di"><label>Motivo</label><p>${v.motivo}</p></div>`:""}
+          ${v.montoTotal?`<div class="di"><label>${v._tipo==='llamada'?'Monto Gestionado':'Total Deuda'}</label><p style="color:var(--red);font-weight:700">$${Number(v.montoTotal).toLocaleString("es-CL")}</p></div>`:""}
+          ${v.facturasSeleccionadas&&v.facturasSeleccionadas.length?`<div class="di"><label>Facturas seleccionadas</label><p style="color:var(--dk);font-weight:700">${v.facturasSeleccionadas.length} · $${v.facturasSeleccionadas.reduce((s,d)=>s+d.monto,0).toLocaleString("es-CL")}</p></div>`:""}
+          ${(!v.facturasSeleccionadas&&v._facturas)?`<div class="di"><label>Facturas</label><p>${v._facturas}</p></div>`:""}
+          ${v.montoPagado?`<div class="di"><label>${v._tipo==='llamada'?'Monto Comprometido':'Monto Pagado'}</label><p style="color:var(--green);font-weight:700">$${Number(v.montoPagado).toLocaleString("es-CL")}</p></div>`:""}
+          ${v.fechaPromesa?`<div class="di"><label>Promesa</label><p>${v.fechaPromesa}</p></div>`:""}
+          ${v.proximaVisita?`<div class="di"><label>${v._tipo==='llamada'?'Próx. Llamada':'Próx. Visita'}</label><p>${v.proximaVisita}</p></div>`:""}
+          ${v.geo?`<div class="di"><label>Ubicación</label><p><a href="https://maps.google.com/?q=${v.geo}" target="_blank" style="color:var(--md)">📍 Ver en mapa</a></p></div>`:""}
+        </div>
+        ${v.comentarios?`<div style="margin-top:9px"><label style="font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--soft)">Observaciones</label><p style="font-size:.82rem;margin-top:2px">${v.comentarios}</p></div>`:""}
+        ${v.foto?`<div style="margin-top:9px"><label style="font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--soft)">Foto</label><br><img src="${v.foto}" style="max-width:100%;border-radius:7px;border:1px solid var(--bdr);margin-top:4px;max-height:170px;object-fit:contain"></div>`:""}
+        ${v.firma?`<div style="margin-top:9px"><label style="font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--soft)">Firma</label><br><img src="${v.firma}" style="max-width:100%;border-radius:7px;border:1px solid var(--bdr);margin-top:4px;max-height:120px;object-fit:contain"></div>`:""}
+        <div style="margin-top:8px">
+          ${!v._remote?`<button class="del-btn" onclick="askDelete(${v.id})">🗑️ Eliminar</button>`:""}
+          ${v._tipo!=='llamada'?`<button class="pdf-btn" onclick="generarPDF(getVisitaById('${v.id}'))">📄 Descargar PDF</button>`:""}
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+/* ── BOTÓN SINCRONIZAR (real) ── */
+async function syncManual() {
+  if (!navigator.onLine) { showToast('📵 Sin conexión', 'err'); return; }
+  if (!CONFIG.GAS_URL || CONFIG.GAS_URL.includes('PEGA_AQUI')) { showToast('⚠️ Configura la URL del Apps Script', 'err'); return; }
+  const pendV = getPendientes().length;
+  const pendL = getLlamadasPend().length;
+  if (!pendV && !pendL) { showToast('✅ Todo sincronizado', 'ok'); return; }
+  showToast('⏳ Sincronizando...', '');
+  await syncPendientes();
+  const env = await syncLlamadas();
+  if (env > 0) showToast(`☁️ ${env} llamada(s) sincronizadas`, 'ok');
+  showToast('✅ Sincronización completa', 'ok');
+}
+
+/* ════════════════════════════════════════
+   CARTERA TELEFÓNICA
+════════════════════════════════════════ */
+async function cargarTelefonica(){
+  if(!navigator.onLine){ showToast('📵 Sin conexión','err'); cargarTelCache(); return; }
+  const btn=document.getElementById('btnTelLoad');
+  btn.textContent='⏳ Cargando...'; btn.disabled=true;
+  try{
+    const url=`${CONFIG.GAS_URL}?action=clientes_telefonica&token=${encodeURIComponent(_token)}&t=${Date.now()}`;
+    const res=await fetch(url);
+    const json=JSON.parse(await res.text());
+    if(!json.ok) throw new Error(json.error||'Error');
+    DBTel=(json.data.clientes||[]).map(c=>({...c,documentos:(c.documentos||[]).map(d=>({...d,vencimiento:excelDateToStr(d.vencimiento)}))}));
+    localStorage.setItem('dbtel_cache',JSON.stringify({clientes:DBTel,ts:json.data.ts}));
+    pintarTelEstado(DBTel.length, DBTel.filter(c=>c.documentos.length).length, json.data.ts, false);
+    showToast(`✅ ${DBTel.length} clientes en tu cartera`,'ok');
+  }catch(err){
+    showToast('Error: '+err.message,'err');
+    cargarTelCache();
+  }finally{
+    btn.textContent='☁️ Cargar cartera'; btn.disabled=false;
+  }
+}
+function cargarTelCache(){
+  const raw=localStorage.getItem('dbtel_cache'); if(!raw)return;
+  try{ const {clientes,ts}=JSON.parse(raw); DBTel=clientes;
+    pintarTelEstado(DBTel.length, DBTel.filter(c=>c.documentos.length).length, ts, true);
+    showToast('📦 Cartera desde caché','ok');
+  }catch(e){}
+}
+function pintarTelEstado(n, nd, ts, cache){
+  const fh=ts?new Date(ts).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  document.getElementById('telBannerTxt').textContent=`${cache?'📦':'✅'} ${n} clientes${cache?' (caché)':''}`;
+  document.getElementById('telBannerSub').textContent=`${nd} con deuda${fh?' · '+fh:''}`;
+  document.getElementById('telDot').className='dot ok';
+  document.getElementById('telDbTxt').textContent=`${n} clientes · ${nd} con documentos`;
+  document.getElementById('telSearchCard').style.display='block';
+  document.getElementById('telNoDB').style.display='none';
+}
+
+function posSTel(){
+  const inp=document.getElementById('telRutS'), box=document.getElementById('telSugBox');
+  const r=inp.getBoundingClientRect();
+  box.style.top=(r.bottom+4)+'px'; box.style.left=r.left+'px'; box.style.width=r.width+'px';
+}
+function buscarTel(v){
+  v=v.trim(); if(v.length<2){closeSugTel();resetCTel();return;}
+  const q=v.toLowerCase().replace(/[.\-]/g,'');
+  sugTel=DBTel.filter(c=>{
+    const r=(c.rut||'').toLowerCase().replace(/[.\-]/g,'');
+    const n=(c.nombre||'').toLowerCase();
+    return r.startsWith(q)||r.includes(q)||n.includes(q);
+  }).slice(0,10);
+  const box=document.getElementById('telSugBox'); posSTel();
+  if(!sugTel.length){box.innerHTML='<div class="si-empty">Sin resultados</div>';box.classList.add('open');return;}
+  box.innerHTML=sugTel.map((c,i)=>{
+    const nd=c.documentos.length, tot=c.monto_total>0?' · $'+c.monto_total.toLocaleString('es-CL'):'';
+    return `<div class="si" onmousedown="selCTel(${i})"><div class="si-name">${c.nombre||c.rut}</div><div class="si-meta">${c.rut}${c.ciudad?' · '+c.ciudad:''}${nd?' · '+nd+' doc'+tot:''}</div></div>`;
+  }).join('');
+  box.classList.add('open');
+}
+function selCTel(i){
+  CATel=sugTel[i];
+  document.getElementById('telRutS').value=CATel.rut+(CATel.nombre?' — '+CATel.nombre:'');
+  document.getElementById('telCNombre').value=CATel.nombre||CATel.rut;
+  document.getElementById('telCRut').value=CATel.rut;
+  closeSugTel(); mostrarFichaTel(CATel); mostrarDeudaTel(CATel);
+  showToast('✅ '+(CATel.nombre||CATel.rut),'ok');
+}
+function closeSugTel(){document.getElementById('telSugBox').classList.remove('open');}
+function mostrarFichaTel(c){
+  document.getElementById('telFRut').textContent=c.rut||'—';
+  document.getElementById('telFName').textContent=c.nombre||'—';
+  document.getElementById('telFDir').textContent=c.direccion||'—';
+  document.getElementById('telFCiu').textContent=c.ciudad||'—';
+  document.getElementById('telFEmail').textContent=c.email||'—';
+  document.getElementById('telFTel').textContent=c.telefono||'—';
+  document.getElementById('telFicha').classList.add('on');
+}
+function mostrarDeudaTel(c){
+  const card=document.getElementById('telDeudaCard');
+  const docs=(c.documentos||[]).filter(d=>d.monto>0);
+  if(!docs.length){card.classList.remove('on');factSelTel=[];return;}
+  const total=docs.reduce((s,d)=>s+d.monto,0);
+  document.getElementById('telTotalBadge').textContent='Total: $'+total.toLocaleString('es-CL');
+  document.getElementById('telDeudaBody').innerHTML=docs.map((d,i)=>{
+    const cls=d.dias>365?'d-red':d.dias>180?'d-ora':d.dias>30?'d-yel':'d-ok';
+    const dt=d.dias>0?d.dias+'d venc.':d.dias===0?'Hoy':'Por vencer';
+    return `<tr id="teltr-${i}">
+      <td><input type="checkbox" class="chk-fac chk-doc-tel" data-i="${i}" onchange="updateSelTel()"><span class="chk-tick">✔</span></td>
+      <td>${d.doc}</td><td>${excelDateToStr(d.vencimiento)}</td>
+      <td><span class="dc ${cls}">${dt}</span></td>
+      <td class="td-r">$${d.monto.toLocaleString('es-CL')}</td>
+    </tr>`;
+  }).join('');
+  card._docs=docs;
+  document.getElementById('telChkAll').checked=false;
+  factSelTel=[]; actualizarResumenTel(); card.classList.add('on');
+}
+function toggleAllTel(chk){ document.querySelectorAll('.chk-doc-tel').forEach(c=>{c.checked=chk.checked;}); updateSelTel(); }
+function updateSelTel(){
+  const card=document.getElementById('telDeudaCard'); const docs=card._docs||[];
+  factSelTel=[];
+  document.querySelectorAll('.chk-doc-tel').forEach(c=>{
+    const tr=document.getElementById('teltr-'+c.dataset.i);
+    if(c.checked){factSelTel.push(docs[c.dataset.i]);tr.classList.add('tr-sel');}
+    else tr.classList.remove('tr-sel');
+  });
+  actualizarResumenTel();
+}
+function actualizarResumenTel(){
+  const res=document.getElementById('telResumenSel'); const badge=document.getElementById('telSelBadge');
+  if(factSelTel.length){
+    const tot=factSelTel.reduce((s,d)=>s+d.monto,0);
+    document.getElementById('telRsCount').textContent=factSelTel.length+' factura'+(factSelTel.length>1?'s':'');
+    document.getElementById('telRsMonto').textContent='$'+tot.toLocaleString('es-CL');
+    badge.textContent='Sel: $'+tot.toLocaleString('es-CL'); badge.classList.add('on');
+    res.classList.add('on');
+    document.getElementById('telMonto').value=tot.toLocaleString('es-CL');
+  }else{ badge.classList.remove('on'); res.classList.remove('on'); document.getElementById('telMonto').value=''; }
+}
+function resetCTel(){
+  CATel=null; factSelTel=[];
+  document.getElementById('telCNombre').value=''; document.getElementById('telCRut').value='';
+  document.getElementById('telFicha').classList.remove('on');
+  document.getElementById('telDeudaCard').classList.remove('on');
+}
+function fmtMontoTel(inp){ const raw=inp.value.replace(/[^0-9]/g,''); inp.value=raw?Number(raw).toLocaleString('es-CL'):''; }
+function getMontoTelNum(){ const v=document.getElementById('telMonto').value.replace(/[^0-9]/g,''); return v?Number(v):''; }
+
+async function guardarLlamadaApp(){
+  const nombre=document.getElementById('telCNombre').value.trim()||document.getElementById('telRutS').value.trim();
+  const fecha=document.getElementById('telFecha').value;
+  const res=document.getElementById('telResultado').value;
+  if(!nombre){showToast('⚠️ Selecciona un cliente','err');return;}
+  if(!fecha){showToast('⚠️ Selecciona la fecha','err');return;}
+  if(!res){showToast('⚠️ Selecciona el resultado','err');return;}
+  const total=factSelTel.reduce((s,d)=>s+d.monto,0);
+  const fmtF=s=>{if(!s)return"";const[y,m,d]=s.split("-");return d&&m&&y?`${d}-${m}-${y}`:s;};
+  const v={
+    id:Date.now(), tipo:'llamada',
+    cliente:nombre, rut:document.getElementById('telCRut').value,
+    telefono:CATel?CATel.telefono:'',
+    fecha:fmtF(fecha), hora:document.getElementById('telHora').value,
+    resultado:res, montoTotal: total||'', montoPagado:getMontoTelNum(),
+    facturasSeleccionadas:[...factSelTel],
+    fechaPromesa:fmtF(document.getElementById('telFechaPromesa').value),
+    proximaVisita:fmtF(document.getElementById('telProx').value),
+    comentarios:document.getElementById('telComentarios').value,
+    _usuario:_usuario, timestamp:new Date().toISOString()
+  };
+  const ok=await enviarLlamada(v);
+  showToast(ok?'☁️ Llamada registrada en Sheets':'💾 Llamada guardada (pendiente de sincronizar)', ok?'ok':'');
+  resetLlamadaForm();
+}
+function resetLlamadaForm(){
+  ['telCNombre','telCRut','telMonto','telFechaPromesa','telProx','telComentarios','telRutS'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('telResultado').value='';
+  const n=new Date();
+  document.getElementById('telFecha').value=n.toISOString().split('T')[0];
+  document.getElementById('telHora').value=n.toTimeString().slice(0,5);
+  resetCTel();
+}
+
+/* ── Cola de llamadas pendientes (offline) ── */
+function getLlamadasPend(){ try{return JSON.parse(localStorage.getItem('ll_pending')||'[]');}catch(e){return[];} }
+function setLlamadasPend(a){ try{localStorage.setItem('ll_pending', JSON.stringify(a));}catch(e){} }
+async function enviarLlamada(v){
+  if(!navigator.onLine || !CONFIG.GAS_URL || CONFIG.GAS_URL.includes('PEGA_AQUI')){ const p=getLlamadasPend(); p.push(v); setLlamadasPend(p); return false; }
+  try{
+    const url=CONFIG.GAS_URL+'?action=guardar_llamada&token='+encodeURIComponent(_token)+'&data='+encodeURIComponent(JSON.stringify(v));
+    const res=await fetch(url); const j=JSON.parse(await res.text());
+    if(j.ok) return true; throw new Error(j.error||'Error');
+  }catch(err){ const p=getLlamadasPend(); p.push(v); setLlamadasPend(p); return false; }
+}
+async function syncLlamadas(){
+  if(!navigator.onLine) return 0;
+  const p=getLlamadasPend(); if(!p.length) return 0;
+  const rest=[]; let env=0;
+  for(const v of p){
+    try{
+      const url=CONFIG.GAS_URL+'?action=guardar_llamada&token='+encodeURIComponent(_token)+'&data='+encodeURIComponent(JSON.stringify(v));
+      const res=await fetch(url); const j=JSON.parse(await res.text());
+      if(j.ok) env++; else rest.push(v);
+    }catch(e){ rest.push(v); }
+  }
+  setLlamadasPend(rest);
+  return env;
+}
+
+/* Defaults de fecha/hora para Llamadas al cargar */
+document.addEventListener('DOMContentLoaded', ()=>{
+  const n=new Date();
+  const f=document.getElementById('telFecha'); if(f&&!f.value) f.value=n.toISOString().split('T')[0];
+  const h=document.getElementById('telHora'); if(h&&!h.value) h.value=n.toTimeString().slice(0,5);
+  setTimeout(syncLlamadas, 2500);
+});
 </script>
 </body>
 </html>
