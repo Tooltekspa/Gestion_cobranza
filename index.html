@@ -298,7 +298,7 @@ tr:hover td{background:var(--pale)}
   </div>
 </header>
 <div class="tabs">
-  <div class="tab active" onclick="showTab('nueva')">📝 Nueva Visita</div>
+  <div class="tab active" id="tabNueva" onclick="showTab('nueva')">📝 Nueva Visita</div>
   <div class="tab" onclick="showTab('historial')">📋 Historial <span class="pending-badge" id="pendingBadge">0</span></div>
   <div class="tab" id="tabLlamadas" onclick="showTab('llamadas')" style="display:none">📞 Llamadas</div>
   <div class="tab" id="tabAdmin" onclick="showTab('admin')" style="display:none">🔧 Admin</div>
@@ -2050,17 +2050,27 @@ let DBTel = [], sugTel = [], CATel = null, factSelTel = [];
 let registrosRemotos = [];
 let _esTel = false;
 
-/* ── Mostrar app: ahora también muestra pestaña Llamadas ── */
+/* ── Mostrar app: pestañas según ROL ── */
 function mostrarApp(nombre, rol) {
+  rol = String(rol||'').toLowerCase();
+  if (rol === 'cobrador') rol = 'presencial';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('userBadge').style.display = 'flex';
   document.getElementById('userNombre').textContent = nombre || _usuario;
   _esAdmin = (rol === 'admin');
-  _esTel = sessionStorage.getItem('gc_tel') === '1';
+  const puedePres = (rol === 'presencial' || rol === 'mixto' || rol === 'admin');
+  const puedeTel  = (rol === 'telefonica' || rol === 'mixto');
+  _esTel = puedeTel;
+  const tabNueva = document.getElementById('tabNueva');
+  if (tabNueva) tabNueva.style.display = puedePres ? '' : 'none';
   const tabAdmin = document.getElementById('tabAdmin');
   if (tabAdmin) tabAdmin.style.display = _esAdmin ? 'block' : 'none';
   const tabLlam = document.getElementById('tabLlamadas');
-  if (tabLlam) tabLlam.style.display = _esTel ? 'block' : 'none';
+  if (tabLlam) tabLlam.style.display = puedeTel ? 'block' : 'none';
+  // Pestaña inicial según permisos
+  if (puedePres) showTab('nueva');
+  else if (puedeTel) showTab('llamadas');
+  else showTab('historial');
 }
 
 /* ── Login: captura el flag telefónica ── */
@@ -2140,7 +2150,7 @@ function showTab(t){
   const tabMap = {nueva:0, historial:1, llamadas:2, admin:3};
   const tabs = document.querySelectorAll(".tab");
   if(tabs[tabMap[t]]) tabs[tabMap[t]].classList.add("active");
-  if(t==="historial"){ if(_esAdmin) cargarRegistrosAdmin(); else renderHist(); }
+  if(t==="historial"){ if(navigator.onLine) cargarHistorial(); else renderHist(); }
   if(t==="admin"){ cargarUsuarios(); cargarSesiones(); }
   if(t==="llamadas"){
     const f=document.getElementById('telFecha'); if(f&&!f.value) f.value=new Date().toISOString().split('T')[0];
@@ -2148,31 +2158,37 @@ function showTab(t){
   }
 }
 
-/* ── ADMIN: traer TODOS los registros (visitas + llamadas) desde Sheets ── */
-async function cargarRegistrosAdmin(){
-  if(!navigator.onLine){ showToast('📵 Sin conexión — mostrando registros locales','err'); renderHist(); return; }
+/* ── Cargar historial desde Sheets (admin = todos · cobrador = los suyos) ──
+   Fusiona los registros del servidor con los locales aún no sincronizados. */
+async function cargarHistorial(){
+  if(!navigator.onLine){ renderHist(); return; }
   try{
     const [rR, rL] = await Promise.all([
       fetch(`${CONFIG.GAS_URL}?action=registros&token=${encodeURIComponent(_token)}&t=${Date.now()}`).then(r=>r.json()),
       fetch(`${CONFIG.GAS_URL}?action=llamadas&token=${encodeURIComponent(_token)}&t=${Date.now()}`).then(r=>r.json())
     ]);
-    const visitasR = (rR.ok ? rR.data.registros : []) || [];
-    const llamadasR = (rL.ok ? rL.data.llamadas : []) || [];
-    registrosRemotos = [...visitasR, ...llamadasR];
+    const visitasR  = (rR.ok ? rR.data.registros : []) || [];
+    const llamadasR = (rL.ok ? rL.data.llamadas  : []) || [];
+    const serverArr = [...visitasR, ...llamadasR];
+    const localIds  = new Set(visitas.map(v=>String(v.id)));
+    const serverOnly = serverArr.filter(x=>!localIds.has(String(x.id)));
+    // locales primero (conservan foto/firma), luego los que solo están en el servidor
+    registrosRemotos = [...visitas, ...serverOnly];
     renderHist();
   }catch(err){
     showToast('Error al cargar registros: '+err.message,'err');
     renderHist();
   }
 }
+function cargarRegistrosAdmin(){ return cargarHistorial(); }
 
 function getVisitaById(id){
-  return registrosRemotos.find(x=>String(x.id)===String(id)) || visitas.find(x=>String(x.id)===String(id));
+  return visitas.find(x=>String(x.id)===String(id)) || registrosRemotos.find(x=>String(x.id)===String(id));
 }
 
 /* ── renderHist: admin usa registros remotos; cobrador usa locales ── */
 function renderHist(f=""){
-  const usarRemoto = _esAdmin && registrosRemotos.length > 0;
+  const usarRemoto = registrosRemotos.length > 0;
   const fuente = usarRemoto ? registrosRemotos : visitas;
   const lista = f
     ? fuente.filter(v => (v.cliente||"").toLowerCase().includes(f.toLowerCase())
@@ -2182,7 +2198,7 @@ function renderHist(f=""){
   const pagos = fuente.filter(v=>v.resultado==="Pago realizado").length;
   const proms = fuente.filter(v=>v.resultado==="Promesa de pago").length;
   document.getElementById("statsGrid").innerHTML=`
-    <div class="stat"><div class="num">${fuente.length}</div><div class="lbl">${usarRemoto?'Todos los registros':'Total Visitas'}</div></div>
+    <div class="stat"><div class="num">${fuente.length}</div><div class="lbl">${_esAdmin?'Todos los registros':'Mis registros'}</div></div>
     <div class="stat"><div class="num" style="color:var(--green)">${pagos}</div><div class="lbl">Pagos</div></div>
     <div class="stat"><div class="num" style="color:#b7860b">${proms}</div><div class="lbl">Promesas</div></div>`;
   const cnt=document.getElementById("lista");
@@ -2249,7 +2265,7 @@ async function syncManual() {
   if (bar) { bar.className = 'sync-bar show synced'; if (txt) txt.textContent = `✅ ${okV} visita(s) y ${okL} llamada(s) sincronizadas`; }
   showToast(`☁️ ${okV} visita(s) · ${okL} llamada(s) enviadas a Sheets`, 'ok');
   setTimeout(() => { if (bar) bar.className = 'sync-bar'; }, 4500);
-  if (_esAdmin) cargarRegistrosAdmin();
+  cargarHistorial();
 }
 
 /* ════════════════════════════════════════
