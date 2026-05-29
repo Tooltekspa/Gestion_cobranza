@@ -490,6 +490,7 @@ tr:hover td{background:var(--pale)}
   <input type="hidden" id="cNombre"><input type="hidden" id="cRut">
   <button class="btn-save" onclick="guardar()">💾 Guardar Registro de Visita</button>
   <button class="btn-pdf-pre" onclick="previewPDF()">📄 Ver / Descargar Ficha PDF</button>
+  <button class="btn-exp" onclick="syncManual()" style="background:var(--dk);width:100%;justify-content:center;margin-top:8px;padding:11px">☁️ Sincronizar mis registros</button>
 </div>
 
 <!-- ══════════ HISTORIAL ══════════ -->
@@ -662,6 +663,7 @@ tr:hover td{background:var(--pale)}
 
   <input type="hidden" id="telCNombre"><input type="hidden" id="telCRut">
   <button class="btn-save" onclick="guardarLlamadaApp()">📞 Registrar Llamada</button>
+  <button class="btn-exp" onclick="syncManual()" style="background:var(--dk);width:100%;justify-content:center;margin-top:8px;padding:11px">☁️ Sincronizar mis registros</button>
 </div>
 
 </main>
@@ -2222,18 +2224,32 @@ function renderHist(f=""){
     </div>`).join("");
 }
 
-/* ── BOTÓN SINCRONIZAR (real) ── */
+/* ── BOTÓN SINCRONIZAR TODO (reenvía TODAS las visitas no sincronizadas + llamadas) ── */
 async function syncManual() {
   if (!navigator.onLine) { showToast('📵 Sin conexión', 'err'); return; }
   if (!CONFIG.GAS_URL || CONFIG.GAS_URL.includes('PEGA_AQUI')) { showToast('⚠️ Configura la URL del Apps Script', 'err'); return; }
-  const pendV = getPendientes().length;
-  const pendL = getLlamadasPend().length;
-  if (!pendV && !pendL) { showToast('✅ Todo sincronizado', 'ok'); return; }
-  showToast('⏳ Sincronizando...', '');
-  await syncPendientes();
-  const env = await syncLlamadas();
-  if (env > 0) showToast(`☁️ ${env} llamada(s) sincronizadas`, 'ok');
-  showToast('✅ Sincronización completa', 'ok');
+  const pendientesV = visitas.filter(v => !v.synced);
+  const pendientesL = getLlamadasPend();
+  if (!pendientesV.length && !pendientesL.length) { showToast('✅ Todo está sincronizado', 'ok'); return; }
+  const bar = document.getElementById('syncBar'), txt = document.getElementById('syncBarTxt');
+  if (bar) bar.className = 'sync-bar show syncing';
+  let okV = 0;
+  for (let i = 0; i < pendientesV.length; i++) {
+    const v = pendientesV[i];
+    if (txt) txt.textContent = `⏳ Visita ${i+1}/${pendientesV.length}...`;
+    try {
+      const url = CONFIG.GAS_URL + '?action=guardar_visita&token=' + encodeURIComponent(_token) + '&data=' + encodeURIComponent(JSON.stringify(prepararParaSync(v)));
+      const res = await fetch(url);
+      const j = JSON.parse(await res.text());
+      if (j.ok) { marcarSynced(v.id); okV++; }
+    } catch(e) { console.error('[Sync visita]', v.id, e.message); }
+  }
+  if (txt) txt.textContent = '⏳ Sincronizando llamadas...';
+  const okL = await syncLlamadas();
+  if (bar) { bar.className = 'sync-bar show synced'; if (txt) txt.textContent = `✅ ${okV} visita(s) y ${okL} llamada(s) sincronizadas`; }
+  showToast(`☁️ ${okV} visita(s) · ${okL} llamada(s) enviadas a Sheets`, 'ok');
+  setTimeout(() => { if (bar) bar.className = 'sync-bar'; }, 4500);
+  if (_esAdmin) cargarRegistrosAdmin();
 }
 
 /* ════════════════════════════════════════
