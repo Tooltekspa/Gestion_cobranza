@@ -804,6 +804,10 @@ const PDFGen = {
     const W=595, H=842;
     const L=this.toLatin.bind(this);
     const fmt=(n)=>Number(n||0).toLocaleString("es-CL");
+    // Normaliza cualquier fecha a dd-mm-aaaa (usa el conversor global)
+    const fF=(d)=>{ try{ return excelDateToStr(d)||"—"; }catch(e){ return d||"—"; } };
+    // Fecha de hoy en dd-mm-aaaa
+    const hoyStr=()=>{ const d=new Date(); return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`; };
 
     // ── Preparar imágenes (redimensionadas) ──
     let fotoInfo=null, firmaInfo=null;
@@ -843,76 +847,76 @@ const PDFGen = {
     const GRAY = v => { ops+=`${v} g\n${v} G\n`; };
 
     // ─── HEADER ───
-    RGB(0.118,0.302,0.549); RECT(0,H-70,W,70,true);
+    RGB(0.118,0.302,0.549); RECT(0,H-78,W,78,true);
     RGB(1,1,1);
-    T(30,H-30,"FICHA DE VISITA DE COBRANZA",15,true);
-    T(30,H-46,"Tooltek - Herramientas para construir el futuro",9);
-    T(30,H-59,`Fecha emision: ${new Date().toLocaleDateString("es-CL")}`,8);
+    T(35,H-34,"FICHA DE VISITA DE COBRANZA",16,true);
+    T(35,H-52,"Tooltek - Herramientas para construir el futuro",9);
+    T(35,H-67,`Fecha de emision: ${hoyStr()}`,8);
     GRAY(0); RGB(0,0,0);
 
     // ─── SECCIÓN: DATOS CLIENTE ───
-    let y = H-85;
-    RGB(0.118,0.302,0.549); RECT(30,y-2,W-60,16,true);
-    RGB(1,1,1); T(35,y+3,"DATOS DEL CLIENTE",8,true);
-    GRAY(0); RGB(0,0,0); y-=18;
+    let y = H-104;
+    RGB(0.118,0.302,0.549); RECT(30,y-3,W-60,18,true);
+    RGB(1,1,1); T(36,y+3,"DATOS DEL CLIENTE",8.5,true);
+    GRAY(0); RGB(0,0,0); y-=26;
 
-    T(35,y,`Cliente: ${visita.cliente}`,9,true); y-=13;
-    T(35,y,`RUT: ${visita.rut||"—"}`); T(310,y,`Ciudad: ${visita.ciudad||"—"}`); y-=13;
-    T(35,y,`Direccion: ${visita.direccion||"—"}`); y-=13;
-    T(35,y,`Telefono: ${visita.telefono||"—"}`); T(310,y,`Email: ${visita.email||"—"}`); y-=8;
+    T(36,y,`Cliente: ${visita.cliente||"—"}`,10,true); y-=16;
+    T(36,y,`RUT: ${visita.rut||"—"}`); T(315,y,`Ciudad: ${visita.ciudad||"—"}`); y-=16;
+    T(36,y,`Direccion: ${visita.direccion||"—"}`); y-=16;
+    T(36,y,`Telefono: ${visita.telefono||"—"}`); T(315,y,`Email: ${visita.email||"—"}`); y-=12;
 
     // ─── SECCIÓN: DATOS VISITA ───
-    y-=6;
-    RGB(0.118,0.302,0.549); RECT(30,y-2,W-60,16,true);
-    RGB(1,1,1); T(35,y+3,"DATOS DE LA VISITA",8,true);
-    GRAY(0); RGB(0,0,0); y-=18;
+    y-=10;
+    RGB(0.118,0.302,0.549); RECT(30,y-3,W-60,18,true);
+    RGB(1,1,1); T(36,y+3,"DATOS DE LA VISITA",8.5,true);
+    GRAY(0); RGB(0,0,0); y-=26;
 
-    T(35,y,`Fecha: ${visita.fecha||"—"}   Hora: ${visita.hora||"—"}`); T(310,y,`Recibe: ${visita.cobrador||"—"}${visita.cargo?" · "+visita.cargo:""}`); y-=13;
-    T(35,y,`Motivo: ${visita.motivo||"—"}`); T(310,y,`Resultado: ${visita.resultado||"—"}`,9,true); y-=13;
-    if(visita.montoPagado){T(35,y,`Monto Pagado/Acordado: $${fmt(visita.montoPagado)}`,9,true);y-=13;}
-    if(visita.fechaPromesa){T(35,y,`Promesa de pago: ${visita.fechaPromesa}`);T(310,y,`Proxima visita: ${visita.proximaVisita||"—"}`);y-=13;}
-    if(visita.geo){T(35,y,`GPS: ${visita.geo}`);y-=13;}
-    y-=4;
+    T(36,y,`Fecha: ${fF(visita.fecha)}`); T(200,y,`Hora: ${fmtHora(visita.hora)||"—"}`); T(315,y,`Recibe: ${visita.cobrador||"—"}${visita.cargo?" · "+visita.cargo:""}`); y-=16;
+    T(36,y,`Motivo: ${visita.motivo||"—"}`); T(315,y,`Resultado: ${visita.resultado||"—"}`,9,true); y-=16;
+    if(visita.montoPagado){T(36,y,`Monto Pagado/Acordado: $${fmt(visita.montoPagado)}`,9,true);y-=16;}
+    if(visita.fechaPromesa){T(36,y,`Promesa de pago: ${fF(visita.fechaPromesa)}`);T(315,y,`Proxima visita: ${fF(visita.proximaVisita)}`);y-=16;}
+    if(visita.geo){T(36,y,`GPS: ${visita.geo}`);y-=16;}
+    y-=8;
 
     // ─── SECCIÓN: FACTURAS ───
     if(visita.facturasSeleccionadas && visita.facturasSeleccionadas.length){
-      RGB(0.118,0.302,0.549); RECT(30,y-2,W-60,16,true);
-      RGB(1,1,1); T(35,y+3,"FACTURAS SELECCIONADAS",8,true);
-      GRAY(0); RGB(0,0,0); y-=18;
+      RGB(0.118,0.302,0.549); RECT(30,y-3,W-60,18,true);
+      RGB(1,1,1); T(36,y+3,"FACTURAS SELECCIONADAS",8.5,true);
+      GRAY(0); RGB(0,0,0); y-=24;
       // Header tabla
-      GRAY(0.92); RECT(30,y-2,W-60,14,true); GRAY(0); RGB(0,0,0);
-      T(35,y+2,"Documento",7.5,true); T(230,y+2,"Vencimiento",7.5,true);
-      T(330,y+2,"Estado",7.5,true); T(470,y+2,"Monto",7.5,true); y-=14;
+      GRAY(0.90); RECT(30,y-3,W-60,17,true); GRAY(0); RGB(0,0,0);
+      T(36,y+2,"Documento",8,true); T(235,y+2,"Vencimiento",8,true);
+      T(345,y+2,"Estado",8,true); T(478,y+2,"Monto",8,true); y-=17;
       let totalFac=0;
       visita.facturasSeleccionadas.forEach((f,i)=>{
-        if(i%2===0){GRAY(0.97);RECT(30,y-2,W-60,14,true);}
+        if(i%2===0){GRAY(0.96);RECT(30,y-3,W-60,17,true);}
         GRAY(0);RGB(0,0,0);
         const doc=String(f.doc||"").substring(0,35);
         const estado=f.dias>0?`${f.dias}d venc.`:f.dias===0?"Hoy":"Por vencer";
-        T(35,y+2,doc,7.5); T(230,y+2,String(f.vencimiento||""),7.5);
-        T(330,y+2,estado,7.5); T(470,y+2,`$${fmt(f.monto)}`,7.5);
-        totalFac+=Number(f.monto)||0; y-=14;
+        T(36,y+2,doc,8); T(235,y+2,fF(f.vencimiento),8);
+        T(345,y+2,estado,8); T(478,y+2,`$${fmt(f.monto)}`,8);
+        totalFac+=Number(f.monto)||0; y-=17;
       });
-      RGB(0.118,0.302,0.549); RECT(30,y-2,W-60,14,true);
-      RGB(1,1,1); T(35,y+2,"TOTAL",8,true); T(440,y+2,`$${fmt(totalFac)}`,9,true);
-      GRAY(0);RGB(0,0,0); y-=18;
+      RGB(0.118,0.302,0.549); RECT(30,y-3,W-60,17,true);
+      RGB(1,1,1); T(36,y+2,"TOTAL",8.5,true); T(440,y+2,`$${fmt(totalFac)}`,9.5,true);
+      GRAY(0);RGB(0,0,0); y-=24;
     }
 
     // ─── OBSERVACIONES ───
     if(visita.comentarios){
-      y-=4;
-      RGB(0.118,0.302,0.549); RECT(30,y-2,W-60,16,true);
-      RGB(1,1,1); T(35,y+3,"OBSERVACIONES",8,true);
-      GRAY(0);RGB(0,0,0); y-=16;
+      y-=6;
+      RGB(0.118,0.302,0.549); RECT(30,y-3,W-60,18,true);
+      RGB(1,1,1); T(36,y+3,"OBSERVACIONES",8.5,true);
+      GRAY(0);RGB(0,0,0); y-=22;
       // Wrap simple
       const words = String(visita.comentarios).split(" ");
       let ln="";
       for(const w of words){
-        if((ln+" "+w).length>90){T(35,y,ln.trim(),8.5);y-=12;ln=w;}
+        if((ln+" "+w).length>95){T(36,y,ln.trim(),9);y-=14;ln=w;}
         else ln+=(ln?" ":"")+w;
       }
-      if(ln){T(35,y,ln.trim(),8.5);y-=12;}
-      y-=4;
+      if(ln){T(36,y,ln.trim(),9);y-=14;}
+      y-=8;
     }
 
     // ─── FOTO + FIRMA (columnas) ───
@@ -921,10 +925,10 @@ const PDFGen = {
     const hasFoto=!!fotoInfo, hasFirma=!!firmaInfo;
 
     if(hasFoto||hasFirma){
-      RGB(0.118,0.302,0.549); RECT(30,y-2,W-60,16,true); RGB(1,1,1);
-      if(hasFoto) T(colFoto,y+3,"FOTO DE EVIDENCIA",8,true);
-      if(hasFirma) T(colFirma,y+3,"FIRMA DEL CLIENTE",8,true);
-      GRAY(0);RGB(0,0,0); y-=18;
+      RGB(0.118,0.302,0.549); RECT(30,y-3,W-60,18,true); RGB(1,1,1);
+      if(hasFoto) T(colFoto+1,y+3,"FOTO DE EVIDENCIA",8.5,true);
+      if(hasFirma) T(colFirma,y+3,"FIRMA DEL CLIENTE",8.5,true);
+      GRAY(0);RGB(0,0,0); y-=24;
     }
 
     // Calcular posiciones de imagen (PDF coordenadas Y crecen hacia arriba)
@@ -941,10 +945,12 @@ const PDFGen = {
     }
 
     // ─── FOOTER ───
-    GRAY(0.5); LN(30,38,W-30,38);
+    GRAY(0.5); LN(30,40,W-30,40);
     RGB(0.118,0.302,0.549);
-    T(30,28,`Tooltek - Documento generado el ${new Date().toLocaleString("es-CL")}`,7.5);
-    T(430,28,`ID: ${visita.id}`,7.5);
+    const _f=new Date();
+    const _foot=`${String(_f.getDate()).padStart(2,"0")}-${String(_f.getMonth()+1).padStart(2,"0")}-${_f.getFullYear()} ${String(_f.getHours()).padStart(2,"0")}:${String(_f.getMinutes()).padStart(2,"0")}`;
+    T(30,29,`Tooltek - Documento generado el ${_foot}`,7.5);
+    T(440,29,`ID: ${visita.id}`,7.5);
 
     // ══════════ CONSTRUIR BINARIO PDF ══════════
     const enc = new TextEncoder();
@@ -1250,6 +1256,12 @@ function excelDateToStr(val) {
   const s = String(val).trim();
   if (!s) return "";
 
+  // Formato ISO (ej: "2026-06-08" o "2026-06-08T03:00:00.000Z") → dd-mm-aaaa
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const p = s.substring(0, 10).split("-");
+    return `${p[2]}-${p[1]}-${p[0]}`;
+  }
+
   // Ya tiene formato legible con barras o guiones → limpiar y normalizar
   if (/\d{1,2}[-\/]\d{1,2}[-\/]\d{4}/.test(s)) {
     const p = s.split(/[-\/]/);
@@ -1285,6 +1297,36 @@ function excelDateToStr(val) {
   }
 
   // Fallback: devolver el string tal cual
+  return s;
+}
+
+/* ── NORMALIZAR HORA → HH:mm ──
+   Google Sheets guarda las horas con fecha base "Sat Dec 30 1899".
+   Esta función extrae solo la hora en formato HH:mm. */
+function fmtHora(val) {
+  if (val === null || val === undefined) return "";
+  const s = String(val).trim();
+  if (!s) return "";
+
+  // Ya está como HH:mm o HH:mm:ss → recortar a HH:mm
+  let m = s.match(/^(\d{1,2}):(\d{2})/);
+  if (m) return `${m[1].padStart(2,"0")}:${m[2]}`;
+
+  // Cadena tipo Date ("Sat Dec 30 1899 12:05:00 GMT...") → tomar la hora
+  m = s.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\b/);
+  if (m) return `${m[1].padStart(2,"0")}:${m[2]}`;
+
+  // Número serial de Excel (fracción del día = hora)
+  const n = Number(val);
+  if (!isNaN(n) && n >= 0) {
+    const frac = n - Math.floor(n);
+    if (frac > 0 || n < 1) {
+      let mins = Math.round(frac * 24 * 60);
+      const hh = Math.floor(mins / 60) % 24;
+      const mm = mins % 60;
+      return `${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
+    }
+  }
   return s;
 }
 
@@ -1524,7 +1566,7 @@ function renderHist(f=""){
   cnt.innerHTML=lista.map(v=>`
     <div class="vc ${vc2[v.resultado]||""}">
       <div class="vh" onclick="toggleV(${v.id})">
-        <div><div class="vn2">${v.cliente}</div><div class="vm">${v.rut?v.rut+" · ":""}${v.fecha}${v.hora?" · "+v.hora:""}${v.cobrador?" · "+v.cobrador:""}</div></div>
+        <div><div class="vn2">${v.cliente}</div><div class="vm">${v.rut?v.rut+" · ":""}${excelDateToStr(v.fecha)}${v.hora?" · "+fmtHora(v.hora):""}${v.cobrador?" · "+v.cobrador:""}</div></div>
         <span class="bdg ${bc[v.resultado]||"bo"}">${v.resultado}</span>
       </div>
       <div class="vb" id="vb-${v.id}">
@@ -1537,8 +1579,8 @@ function renderHist(f=""){
           ${v.cobrador?`<div class="di"><label>Recibe la visita</label><p>${v.cobrador}${v.cargo?" · "+v.cargo:""}</p></div>`:""}          ${v.montoTotal?`<div class="di"><label>Total Deuda</label><p style="color:var(--red);font-weight:700">$${Number(v.montoTotal).toLocaleString("es-CL")}</p></div>`:""}
           ${v.facturasSeleccionadas&&v.facturasSeleccionadas.length?`<div class="di"><label>Facturas seleccionadas</label><p style="color:var(--dk);font-weight:700">${v.facturasSeleccionadas.length} · $${v.facturasSeleccionadas.reduce((s,d)=>s+d.monto,0).toLocaleString("es-CL")}</p></div>`:""}
           ${v.montoPagado?`<div class="di"><label>Monto Pagado</label><p style="color:var(--green);font-weight:700">$${Number(v.montoPagado).toLocaleString("es-CL")}</p></div>`:""}
-          ${v.fechaPromesa?`<div class="di"><label>Promesa</label><p>${v.fechaPromesa}</p></div>`:""}
-          ${v.proximaVisita?`<div class="di"><label>Próx. Visita</label><p>${v.proximaVisita}</p></div>`:""}
+          ${v.fechaPromesa?`<div class="di"><label>Promesa</label><p>${excelDateToStr(v.fechaPromesa)}</p></div>`:""}
+          ${v.proximaVisita?`<div class="di"><label>Próx. Visita</label><p>${excelDateToStr(v.proximaVisita)}</p></div>`:""}
           ${v.geo?`<div class="di"><label>Ubicación</label><p><a href="https://maps.google.com/?q=${v.geo}" target="_blank" style="color:var(--md)">📍 Ver en mapa</a></p></div>`:""}
         </div>
         ${v.comentarios?`<div style="margin-top:9px"><label style="font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--soft)">Comentarios</label><p style="font-size:.82rem;margin-top:2px">${v.comentarios}</p></div>`:""}
@@ -2209,7 +2251,7 @@ function renderHist(f=""){
     <div class="vc ${vc2[v.resultado]||""}">
       <div class="vh" onclick="toggleV('${v.id}')">
         <div><div class="vn2">${v._tipo==='llamada'?'📞 ':''}${v.cliente}</div>
-        <div class="vm">${v.rut?v.rut+" · ":""}${v.fecha}${v.hora?" · "+v.hora:""}${(v.cobrador||v._usuario)?" · "+(v.cobrador||v._usuario):""}</div></div>
+        <div class="vm">${v.rut?v.rut+" · ":""}${excelDateToStr(v.fecha)}${v.hora?" · "+fmtHora(v.hora):""}${(v.cobrador||v._usuario)?" · "+(v.cobrador||v._usuario):""}</div></div>
         <span class="bdg ${bc[v.resultado]||"bo"}">${v.resultado}</span>
       </div>
       <div class="vb" id="vb-${v.id}">
@@ -2225,8 +2267,8 @@ function renderHist(f=""){
           ${v.facturasSeleccionadas&&v.facturasSeleccionadas.length?`<div class="di"><label>Facturas seleccionadas</label><p style="color:var(--dk);font-weight:700">${v.facturasSeleccionadas.length} · $${v.facturasSeleccionadas.reduce((s,d)=>s+d.monto,0).toLocaleString("es-CL")}</p></div>`:""}
           ${(!v.facturasSeleccionadas&&v._facturas)?`<div class="di"><label>Facturas</label><p>${v._facturas}</p></div>`:""}
           ${v.montoPagado?`<div class="di"><label>${v._tipo==='llamada'?'Monto Comprometido':'Monto Pagado'}</label><p style="color:var(--green);font-weight:700">$${Number(v.montoPagado).toLocaleString("es-CL")}</p></div>`:""}
-          ${v.fechaPromesa?`<div class="di"><label>Promesa</label><p>${v.fechaPromesa}</p></div>`:""}
-          ${v.proximaVisita?`<div class="di"><label>${v._tipo==='llamada'?'Próx. Llamada':'Próx. Visita'}</label><p>${v.proximaVisita}</p></div>`:""}
+          ${v.fechaPromesa?`<div class="di"><label>Promesa</label><p>${excelDateToStr(v.fechaPromesa)}</p></div>`:""}
+          ${v.proximaVisita?`<div class="di"><label>${v._tipo==='llamada'?'Próx. Llamada':'Próx. Visita'}</label><p>${excelDateToStr(v.proximaVisita)}</p></div>`:""}
           ${v.geo?`<div class="di"><label>Ubicación</label><p><a href="https://maps.google.com/?q=${v.geo}" target="_blank" style="color:var(--md)">📍 Ver en mapa</a></p></div>`:""}
         </div>
         ${v.comentarios?`<div style="margin-top:9px"><label style="font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--soft)">Observaciones</label><p style="font-size:.82rem;margin-top:2px">${v.comentarios}</p></div>`:""}
