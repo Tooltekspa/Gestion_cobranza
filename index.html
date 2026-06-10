@@ -247,12 +247,40 @@ tr:hover td{background:var(--pale)}
 .btn-can{padding:8px 17px;border-radius:7px;border:1.5px solid var(--bdr);background:#fff;cursor:pointer;font-family:"DM Sans",sans-serif;font-weight:600}
 .btn-cfm{padding:8px 17px;border-radius:7px;border:none;background:var(--red);color:#fff;cursor:pointer;font-family:"DM Sans",sans-serif;font-weight:700}
 
+/* DASHBOARD */
+.dash-filtros{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:12px 14px;margin-bottom:13px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.dash-filtros .field{flex:1;min-width:130px}
+.preset-row{display:flex;gap:6px;flex-wrap:wrap;width:100%}
+.preset{padding:6px 13px;border-radius:100px;border:1.5px solid var(--bdr);background:var(--bg);font-size:.75rem;font-weight:600;color:var(--soft);cursor:pointer;font-family:"DM Sans",sans-serif;transition:all .15s}
+.preset.on{background:var(--dk);border-color:var(--dk);color:#fff}
+.btn-dash{background:var(--dk);color:#fff;border:none;border-radius:9px;padding:10px 18px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:13px}
+.kpi{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;border-top:4px solid var(--md)}
+.kpi.k-green{border-top-color:var(--green)}
+.kpi.k-gold{border-top-color:var(--gold)}
+.kpi.k-purple{border-top-color:var(--purple)}
+.kpi .kl{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--soft)}
+.kpi .kn{font-family:"DM Serif Display",serif;font-size:1.45rem;color:var(--ink);margin-top:3px;white-space:nowrap}
+.kpi .ks{font-size:.7rem;color:var(--soft);margin-top:2px}
+.rec-bar{height:14px;background:var(--bg2);border-radius:100px;overflow:hidden;margin-top:8px}
+.rec-fill{height:100%;background:linear-gradient(90deg,var(--green),#2ecc71);border-radius:100px;transition:width .6s}
+.chart-wrap{padding:16px 14px 8px;overflow-x:auto}
+.chart{display:flex;align-items:flex-end;gap:8px;min-height:160px}
+.cbar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-width:46px;flex:1}
+.cbar .cv{font-size:.66rem;font-weight:700;color:var(--green);white-space:nowrap}
+.cbar .cb{width:100%;max-width:38px;background:linear-gradient(180deg,#2ecc71,var(--green));border-radius:6px 6px 0 0;min-height:3px}
+.cbar .cd{font-size:.64rem;color:var(--soft);white-space:nowrap}
+.cbar.cb-prom .cv{color:#b7860b}
+.cbar.cb-prom .cb{background:linear-gradient(180deg,#f1c40f,var(--gold))}
+.dash-empty{text-align:center;padding:28px;color:var(--soft);font-size:.85rem;width:100%;align-self:center}
+
 @media(max-width:600px){
   .r2,.r3{grid-template-columns:1fr}
   .stats-grid{grid-template-columns:1fr 1fr}
   .rg{grid-template-columns:repeat(2,1fr)}
   .dg,.f-grid{grid-template-columns:1fr}
   table{font-size:.74rem}th,td{padding:6px 8px}
+  .kpi-grid{grid-template-columns:1fr 1fr}
 }
 </style>
 </head>
@@ -300,6 +328,7 @@ tr:hover td{background:var(--pale)}
 <div class="tabs">
   <div class="tab active" id="tabNueva" onclick="showTab('nueva')">📝 Nueva Visita</div>
   <div class="tab" onclick="showTab('historial')">📋 Historial <span class="pending-badge" id="pendingBadge">0</span></div>
+  <div class="tab" id="tabDashboard" onclick="showTab('dashboard')">📊 Dashboard</div>
   <div class="tab" id="tabLlamadas" onclick="showTab('llamadas')" style="display:none">📞 Llamadas</div>
   <div class="tab" id="tabAdmin" onclick="showTab('admin')" style="display:none">🔧 Admin</div>
 </div>
@@ -506,6 +535,66 @@ tr:hover td{background:var(--pale)}
     <div class="sb"><input type="text" id="srch" placeholder="🔍 Buscar..." oninput="filtrar()"></div>
   </div>
   <div id="lista"></div>
+</div>
+<!-- ══════════ DASHBOARD ══════════ -->
+<div class="panel" id="panel-dashboard">
+
+  <div class="dash-filtros">
+    <div class="preset-row">
+      <button class="preset" data-p="hoy" onclick="dashPreset('hoy')">Hoy</button>
+      <button class="preset" data-p="semana" onclick="dashPreset('semana')">Esta semana</button>
+      <button class="preset on" data-p="mes" onclick="dashPreset('mes')">Este mes</button>
+      <button class="preset" data-p="todo" onclick="dashPreset('todo')">Todo</button>
+    </div>
+    <div class="field"><label>Desde</label><input type="date" id="dashDesde" onchange="dashCustom()"></div>
+    <div class="field"><label>Hasta</label><input type="date" id="dashHasta" onchange="dashCustom()"></div>
+    <button class="btn-dash" onclick="cargarDashboard(true)">🔄 Actualizar</button>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi k-green">
+      <div class="kl">💵 Total recaudado</div>
+      <div class="kn" id="kpiRecaudado">$0</div>
+      <div class="ks" id="kpiPagos">0 pagos registrados</div>
+    </div>
+    <div class="kpi k-gold">
+      <div class="kl">🤝 Promesas de pago</div>
+      <div class="kn" id="kpiPromesas">0</div>
+      <div class="ks" id="kpiComprometido">$0 comprometido</div>
+    </div>
+    <div class="kpi">
+      <div class="kl">📋 Gestiones</div>
+      <div class="kn" id="kpiGestiones">0</div>
+      <div class="ks">visitas + llamadas en el rango</div>
+    </div>
+    <div class="kpi k-purple">
+      <div class="kl">📊 Recuperado del total</div>
+      <div class="kn" id="kpiPct">—</div>
+      <div class="ks" id="kpiPctSub">Cargando cartera...</div>
+      <div class="rec-bar"><div class="rec-fill" id="recFill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">💵 Recaudado por día ($)</div>
+    <div class="chart-wrap"><div class="chart" id="chartRecaudado"><div class="dash-empty">Sin datos en el rango</div></div></div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">🤝 Promesas de pago por día</div>
+    <div class="chart-wrap"><div class="chart" id="chartPromesas"><div class="dash-empty">Sin datos en el rango</div></div></div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">📅 Detalle por día</div>
+    <div class="twrap">
+      <table>
+        <thead><tr><th>Fecha</th><th class="td-r">Gestiones</th><th class="td-r">Pagos</th><th class="td-r">Recaudado</th><th class="td-r">Promesas</th><th class="td-r">Comprometido</th></tr></thead>
+        <tbody id="dashTabla"><tr><td colspan="6" style="text-align:center;padding:18px;color:var(--soft)">Sin datos</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 <!-- ══════════ ADMIN ══════════ -->
 <div class="panel" id="panel-admin">
@@ -1060,7 +1149,7 @@ function showTab(t){
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
   document.getElementById("panel-"+t).classList.add("active");
   // Activar tab correcto según nombre
-  const tabMap = {nueva:0, historial:1, admin:2};
+  const tabMap = {nueva:0, historial:1, dashboard:2, llamadas:3, admin:4};
   const tabs = document.querySelectorAll(".tab");
   if(tabs[tabMap[t]]) tabs[tabMap[t]].classList.add("active");
   if(t==="historial") renderHist();
@@ -2189,10 +2278,11 @@ function showTab(t){
   document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
   document.getElementById("panel-"+t).classList.add("active");
-  const tabMap = {nueva:0, historial:1, llamadas:2, admin:3};
+  const tabMap = {nueva:0, historial:1, dashboard:2, llamadas:3, admin:4};
   const tabs = document.querySelectorAll(".tab");
   if(tabs[tabMap[t]]) tabs[tabMap[t]].classList.add("active");
   if(t==="historial"){ if(navigator.onLine) cargarHistorial(); else renderHist(); }
+  if(t==="dashboard"){ cargarDashboard(); }
   if(t==="admin"){ cargarUsuarios(); cargarSesiones(); }
   if(t==="llamadas"){
     const f=document.getElementById('telFecha'); if(f&&!f.value) f.value=new Date().toISOString().split('T')[0];
@@ -2498,6 +2588,179 @@ async function syncLlamadas(){
   }
   setLlamadasPend(rest);
   return env;
+}
+
+/* ════════════════════════════════════════
+   DASHBOARD DE RECAUDACIÓN
+   Recaudado por día · Promesas · % recuperado
+════════════════════════════════════════ */
+let _dashRegistros = [];      // visitas + llamadas (servidor + locales, sin duplicados)
+let _dashDeudaCartera = null; // deuda vigente de la(s) cartera(s) desde Sheets
+let _dashCargado = false;
+
+function parseMontoNum(v){
+  if(v===null||v===undefined||v==="") return 0;
+  const n=Number(String(v).replace(/[^0-9-]/g,""));
+  return isNaN(n)?0:n;
+}
+
+/* Normaliza cualquier formato de fecha del registro → clave "yyyy-mm-dd" (ordenable) */
+function fechaKey(v){
+  const s=excelDateToStr(v.fecha);
+  const m=/^(\d{2})-(\d{2})-(\d{4})$/.exec(s);
+  return m?`${m[3]}-${m[2]}-${m[1]}`:"";
+}
+
+function dashPreset(p){
+  document.querySelectorAll('#panel-dashboard .preset').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+  const hoy=new Date(); const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let d1='', d2=iso(hoy);
+  if(p==='hoy') d1=iso(hoy);
+  else if(p==='semana'){ const x=new Date(hoy); const dow=(x.getDay()+6)%7; x.setDate(x.getDate()-dow); d1=iso(x); }
+  else if(p==='mes'){ d1=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-01`; }
+  else { d1=''; d2=''; }
+  document.getElementById('dashDesde').value=d1;
+  document.getElementById('dashHasta').value=d2;
+  renderDashboard();
+}
+
+function dashCustom(){
+  document.querySelectorAll('#panel-dashboard .preset').forEach(b=>b.classList.remove('on'));
+  renderDashboard();
+}
+
+async function cargarDashboard(forzar=false){
+  // Rango por defecto: este mes
+  if(!document.getElementById('dashDesde').value && !document.getElementById('dashHasta').value){
+    const hoy=new Date();
+    document.getElementById('dashDesde').value=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-01`;
+    document.getElementById('dashHasta').value=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+  }
+  if(_dashCargado && !forzar){ renderDashboard(); return; }
+  if(!navigator.onLine){
+    _dashRegistros=[...visitas];
+    renderDashboard();
+    showToast('📵 Sin conexión — mostrando solo registros locales','err');
+    return;
+  }
+  try{
+    const rol=(sessionStorage.getItem('gc_rol')||'').toLowerCase();
+    const pide=[
+      fetch(`${CONFIG.GAS_URL}?action=registros&scope=todos&token=${encodeURIComponent(_token)}&t=${Date.now()}`).then(r=>r.json()).catch(()=>({ok:false})),
+      fetch(`${CONFIG.GAS_URL}?action=llamadas&scope=todos&token=${encodeURIComponent(_token)}&t=${Date.now()}`).then(r=>r.json()).catch(()=>({ok:false})),
+      fetch(`${CONFIG.GAS_URL}?action=clientes&t=${Date.now()}&token=${encodeURIComponent(_token)}`).then(r=>r.json()).catch(()=>({ok:false}))
+    ];
+    if(rol==='telefonica'||rol==='mixto'){
+      pide.push(fetch(`${CONFIG.GAS_URL}?action=clientes_telefonica&token=${encodeURIComponent(_token)}&t=${Date.now()}`).then(r=>r.json()).catch(()=>({ok:false})));
+    }
+    const [rR,rL,rC,rT]=await Promise.all(pide);
+    const visitasR =(rR&&rR.ok ? rR.data.registros : [])||[];
+    const llamadasR=(rL&&rL.ok ? rL.data.llamadas  : [])||[];
+    const serverArr=[...visitasR,...llamadasR];
+    const localIds=new Set(visitas.map(v=>String(v.id)));
+    _dashRegistros=[...visitas,...serverArr.filter(x=>!localIds.has(String(x.id)))];
+    // Deuda vigente de la(s) cartera(s) para el % recuperado
+    let deuda=null;
+    if(rC&&rC.ok) deuda=(rC.data.clientes||[]).reduce((s,c)=>s+parseMontoNum(c.monto_total),0);
+    if(rT&&rT.ok) deuda=(deuda||0)+(rT.data.clientes||[]).reduce((s,c)=>s+parseMontoNum(c.monto_total),0);
+    _dashDeudaCartera=deuda;
+    _dashCargado=true;
+    renderDashboard();
+  }catch(err){
+    _dashRegistros=[...visitas];
+    renderDashboard();
+    showToast('Error al cargar dashboard: '+err.message,'err');
+  }
+}
+
+function renderDashboard(){
+  const d1=document.getElementById('dashDesde').value;
+  const d2=document.getElementById('dashHasta').value;
+  const fmt=n=>'$'+Number(n||0).toLocaleString('es-CL');
+
+  // Filtrar registros válidos dentro del rango
+  const regs=_dashRegistros.filter(v=>{
+    if(!v||v.resultado==='test'||v.cliente==='TEST_DIAGNOSTICO') return false;
+    const k=fechaKey(v); if(!k) return false;
+    if(d1&&k<d1) return false;
+    if(d2&&k>d2) return false;
+    return true;
+  });
+
+  // Agrupar por día
+  const dias={};
+  let totRec=0, nPagos=0, nProm=0, totComp=0;
+  regs.forEach(v=>{
+    const k=fechaKey(v);
+    if(!dias[k]) dias[k]={gest:0,pagos:0,rec:0,prom:0,comp:0};
+    const d=dias[k]; d.gest++;
+    const m=parseMontoNum(v.montoPagado);
+    if(v.resultado==='Pago realizado'){ d.pagos++; d.rec+=m; nPagos++; totRec+=m; }
+    else if(v.resultado==='Promesa de pago'){ d.prom++; d.comp+=m; nProm++; totComp+=m; }
+  });
+  const keys=Object.keys(dias).sort();
+
+  // KPIs
+  document.getElementById('kpiRecaudado').textContent=fmt(totRec);
+  document.getElementById('kpiPagos').textContent=`${nPagos} pago${nPagos!==1?'s':''} registrado${nPagos!==1?'s':''}`;
+  document.getElementById('kpiPromesas').textContent=nProm;
+  document.getElementById('kpiComprometido').textContent=fmt(totComp)+' comprometido';
+  document.getElementById('kpiGestiones').textContent=regs.length;
+
+  // % recuperado = recaudado / (deuda vigente cartera + recaudado)
+  const pctEl=document.getElementById('kpiPct'), pctSub=document.getElementById('kpiPctSub'), fill=document.getElementById('recFill');
+  if(_dashDeudaCartera!==null){
+    const totalDeuda=_dashDeudaCartera+totRec;
+    const pct=totalDeuda>0?(totRec/totalDeuda*100):0;
+    pctEl.textContent=pct.toFixed(1)+'%';
+    pctSub.textContent=`${fmt(totRec)} de ${fmt(totalDeuda)}`;
+    fill.style.width=Math.min(100,pct)+'%';
+  }else{
+    pctEl.textContent='—';
+    pctSub.textContent='No se pudo cargar la cartera';
+    fill.style.width='0%';
+  }
+
+  // Gráficos de barras
+  const ddmm=k=>`${k.slice(8,10)}-${k.slice(5,7)}`;
+  pintarChart('chartRecaudado',keys.map(k=>({d:ddmm(k),v:dias[k].rec,txt:'$'+(dias[k].rec/1000>=1000?(dias[k].rec/1000000).toFixed(1)+'M':Math.round(dias[k].rec/1000)+'K')})),false);
+  pintarChart('chartPromesas',keys.map(k=>({d:ddmm(k),v:dias[k].prom,txt:String(dias[k].prom)})),true);
+
+  // Tabla detalle
+  const tb=document.getElementById('dashTabla');
+  if(!keys.length){
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--soft)">Sin datos en el rango seleccionado</td></tr>';
+    return;
+  }
+  tb.innerHTML=keys.map(k=>{const d=dias[k];return `<tr>
+      <td><strong>${k.slice(8,10)}-${k.slice(5,7)}-${k.slice(0,4)}</strong></td>
+      <td class="td-r">${d.gest}</td>
+      <td class="td-r" style="color:var(--green);font-weight:700">${d.pagos}</td>
+      <td class="td-r" style="color:var(--green);font-weight:700">${fmt(d.rec)}</td>
+      <td class="td-r" style="color:#b7860b;font-weight:700">${d.prom}</td>
+      <td class="td-r" style="color:#b7860b;font-weight:700">${fmt(d.comp)}</td>
+    </tr>`;}).join('')+`<tr class="tr-total">
+      <td>TOTAL</td>
+      <td class="td-r">${regs.length}</td>
+      <td class="td-r">${nPagos}</td>
+      <td class="td-r">${fmt(totRec)}</td>
+      <td class="td-r">${nProm}</td>
+      <td class="td-r">${fmt(totComp)}</td>
+    </tr>`;
+}
+
+function pintarChart(id,datos,esProm){
+  const el=document.getElementById(id);
+  if(!datos.some(x=>x.v>0)){ el.innerHTML='<div class="dash-empty">Sin datos en el rango</div>'; return; }
+  const max=Math.max(...datos.map(x=>x.v));
+  el.innerHTML=datos.map(x=>{
+    const h=max>0?Math.max(3,Math.round(x.v/max*120)):3;
+    return `<div class="cbar ${esProm?'cb-prom':''}">
+      <div class="cv">${x.v>0?x.txt:''}</div>
+      <div class="cb" style="height:${h}px"></div>
+      <div class="cd">${x.d}</div>
+    </div>`;
+  }).join('');
 }
 
 /* Defaults de fecha/hora para Llamadas al cargar */
