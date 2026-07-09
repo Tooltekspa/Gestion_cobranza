@@ -382,10 +382,17 @@ tr:hover td{background:var(--pale)}
     <div class="f-grid">
       <div class="f-item"><label>Dirección</label><p id="fDir">—</p></div>
       <div class="f-item"><label>Ciudad</label><p id="fCiu">—</p></div>
-      <div class="f-item"><label>Email</label><p id="fEmail">—</p></div>
+      <div class="f-item"><label>Correo electrónico</label><p id="fEmail">—</p></div>
       <div class="f-item"><label>Teléfono</label>
         <input type="tel" id="telefono" class="tel-dk" placeholder="+56 9 xxxx xxxx">
       </div>
+      <div class="f-item"><label>Móvil</label><p id="fMovil">—</p></div>
+      <div class="f-item"><label>Vendedor</label><p id="fVen">—</p></div>
+      <div class="f-item"><label>Condiciones de pago</label><p id="fCond">—</p></div>
+      <div class="f-item"><label>Crédito concedido</label><p id="fCred">—</p></div>
+      <div class="f-item"><label>Total adeudado</label><p id="fTot">—</p></div>
+      <div class="f-item"><label>Línea disponible</label><p id="fLin">—</p></div>
+      <div class="f-item" style="grid-column:1/-1"><label>Comentario</label><p id="fCom">—</p></div>
     </div>
   </div>
 
@@ -690,8 +697,15 @@ tr:hover td{background:var(--pale)}
     <div class="f-grid">
       <div class="f-item"><label>Dirección</label><p id="telFDir">—</p></div>
       <div class="f-item"><label>Ciudad</label><p id="telFCiu">—</p></div>
-      <div class="f-item"><label>Email</label><p id="telFEmail">—</p></div>
+      <div class="f-item"><label>Correo electrónico</label><p id="telFEmail">—</p></div>
       <div class="f-item"><label>Teléfono</label><p id="telFTel">—</p></div>
+      <div class="f-item"><label>Móvil</label><p id="telFMovil">—</p></div>
+      <div class="f-item"><label>Vendedor</label><p id="telFVen">—</p></div>
+      <div class="f-item"><label>Condiciones de pago</label><p id="telFCond">—</p></div>
+      <div class="f-item"><label>Crédito concedido</label><p id="telFCred">—</p></div>
+      <div class="f-item"><label>Total adeudado</label><p id="telFTot">—</p></div>
+      <div class="f-item"><label>Línea disponible</label><p id="telFLin">—</p></div>
+      <div class="f-item" style="grid-column:1/-1"><label>Comentario</label><p id="telFCom">—</p></div>
     </div>
   </div>
 
@@ -1122,6 +1136,59 @@ let DB=[], visitas=JSON.parse(localStorage.getItem("vc")||"[]");
 let firma="", foto="", geo=null, delId=null, CA=null, sugData=[];
 let facturasSeleccionadas=[];
 
+/* ── Normalización flexible de campos de cliente ──
+   Mapea nombres de columnas variados (Sheets / GAS / Excel) a campos canónicos:
+   rut, nombre, direccion, ciudad, email, telefono, movil, vendedor,
+   condicion_pago, credito, total_adeudado, linea_disponible, comentario */
+function normalizarCliente(c){
+  if(!c||typeof c!=="object") return c;
+  const norm=s=>String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+  const idx={};
+  Object.keys(c).forEach(k=>{ idx[norm(k)]=k; });
+  const pick=(...alts)=>{
+    for(const a of alts){
+      const hit=Object.keys(idx).find(k=>k.includes(a));
+      if(hit!==undefined){
+        const v=c[idx[hit]];
+        if(v!==undefined&&v!==null&&String(v).trim()!=="") return v;
+      }
+    }
+    return "";
+  };
+  const out={...c};
+  out.rut              = out.rut              || pick("rut");
+  out.nombre           = out.nombre           || pick("nombre","razonsocial","cliente");
+  out.direccion        = out.direccion        || pick("direc","calle","domicilio");
+  out.ciudad           = out.ciudad           || pick("ciudad","comuna","city");
+  out.email            = out.email            || pick("correoelectronico","correo","email","mail");
+  out.movil            = out.movil            || pick("movil","celular");
+  if(!out.telefono){
+    const telKey=Object.keys(idx).find(k=>(k.includes("telefono")||k.includes("fono")||k.includes("phone")||k==="tel")&&!k.includes("movil")&&!k.includes("celular"));
+    out.telefono = telKey ? (c[idx[telKey]]||"") : "";
+  }
+  out.vendedor         = out.vendedor         || pick("vendedor");
+  out.condicion_pago   = out.condicion_pago   || pick("condicionesdepago","condicion");
+  out.credito          = (out.credito!==undefined&&out.credito!=="") ? out.credito : pick("creditoconcedido","credito");
+  out.total_adeudado   = (out.total_adeudado!==undefined&&out.total_adeudado!=="") ? out.total_adeudado : pick("totaladeudado","adeudado");
+  out.linea_disponible = (out.linea_disponible!==undefined&&out.linea_disponible!=="") ? out.linea_disponible : pick("lineadisponible","linea");
+  out.comentario       = out.comentario       || pick("comentario","observ");
+  return out;
+}
+
+/* Formato moneda chilena tolerante ("1234567", 1234567, "1.234.567,5") */
+function fmtCLP(v){
+  if(v===null||v===undefined||String(v).trim()==="") return "—";
+  let n;
+  if(typeof v==="number"){ n=v; }
+  else{
+    const s=String(v).trim();
+    if(/^-?\d+(\.\d+)?$/.test(s)) n=parseFloat(s);
+    else n=parseFloat(s.replace(/[^\d\-,]/g,"").replace(",","."));
+    if(isNaN(n)) return String(v);
+  }
+  return "$"+Math.round(n).toLocaleString("es-CL");
+}
+
 /* ════════════════════════════════════════
    CONFIGURACIÓN GOOGLE APPS SCRIPT
    ► Pegar aquí la URL que genera Apps Script
@@ -1176,13 +1243,31 @@ function cargarExcel(input){
       const cR=find(["rut","id"]), cN=find(["nombre","razon","cliente","empresa"]);
       const cD=find(["direc","calle","dom"]), cC=find(["ciudad","city","comuna"]);
       const cE=find(["email","correo","mail"]);
-      const cT=find(["telefono","telef","fono","phone","cel","movil","contacto","tel"]);
+      const cMov=find(["movil","celular"]);
+      const cT=keys.find(k=>{
+        const nk=normalize(k);
+        return (nk.includes("telefono")||nk.includes("telef")||nk.includes("fono")||nk.includes("phone")||nk.includes("contacto")||nk.trim()==="tel")&&k!==cMov;
+      })||"";
+      const cVen=find(["vendedor"]);
+      const cCond=find(["condicion"]);
+      const cCred=find(["credito"]);
+      const cTot=find(["adeudado"]);
+      const cLin=find(["linea disponible","linea"]);
+      const cCom=find(["comentario","observ"]);
       const cm={};
       rowsC.forEach(r=>{
         const rut=String(r[cR]||"").trim(), nom=String(r[cN]||"").trim();
         if(!rut&&!nom)return;
         const key=(nom||rut).toLowerCase();
-        cm[key]={rut,nombre:nom,direccion:String(r[cD]||"").trim(),ciudad:String(r[cC]||"").trim(),email:String(r[cE]||"").trim(),telefono:String(r[cT]||"").trim(),documentos:[],monto_total:0};
+        cm[key]={rut,nombre:nom,direccion:String(r[cD]||"").trim(),ciudad:String(r[cC]||"").trim(),email:String(r[cE]||"").trim(),telefono:String(r[cT]||"").trim(),
+          movil:String(cMov?(r[cMov]||""):"").trim(),
+          vendedor:String(cVen?(r[cVen]||""):"").trim(),
+          condicion_pago:String(cCond?(r[cCond]||""):"").trim(),
+          credito:cCred?(r[cCred]??""):"",
+          total_adeudado:cTot?(r[cTot]??""):"",
+          linea_disponible:cLin?(r[cLin]??""):"",
+          comentario:String(cCom?(r[cCom]||""):"").trim(),
+          documentos:[],monto_total:0};
       });
       if(sD&&wb.Sheets[sD]){
         const rowsD=wb.Sheets[sD]._rows||[];
@@ -1255,8 +1340,16 @@ function mostrarFicha(c){
   document.getElementById("fDir").textContent=c.direccion||"—";
   document.getElementById("fCiu").textContent=c.ciudad||"—";
   document.getElementById("fEmail").textContent=c.email||"—";
-  // Pre-llenar teléfono desde Excel si existe
-  if(c.telefono) document.getElementById("telefono").value=c.telefono;
+  document.getElementById("fMovil").textContent=c.movil||"—";
+  document.getElementById("fVen").textContent=c.vendedor||"—";
+  document.getElementById("fCond").textContent=c.condicion_pago||"—";
+  document.getElementById("fCred").textContent=fmtCLP(c.credito);
+  const _tot=(c.total_adeudado!==undefined&&String(c.total_adeudado).trim()!=="")?c.total_adeudado:(c.monto_total||"");
+  document.getElementById("fTot").textContent=fmtCLP(_tot);
+  document.getElementById("fLin").textContent=fmtCLP(c.linea_disponible);
+  document.getElementById("fCom").textContent=c.comentario||"—";
+  // Pre-llenar teléfono desde Excel si existe (fijo o móvil)
+  if(c.telefono||c.movil) document.getElementById("telefono").value=c.telefono||c.movil;
   // Pre-llenar campos de actualización en Datos de la Visita
   if(c.email) document.getElementById("visitaEmail").value=c.email;
   if(c.telefono) document.getElementById("visitaTelefono").value=c.telefono;
@@ -1765,7 +1858,7 @@ async function cargarDesdeSheets() {
     try { json = JSON.parse(text); }
     catch(pe) { throw new Error('Respuesta no es JSON: ' + text.substring(0,100)); }
     if (!json.ok) throw new Error(json.error || 'Error desconocido del servidor');
-    const clientes = json.data.clientes.map(c => ({
+    const clientes = json.data.clientes.map(c => normalizarCliente({
       ...c,
       documentos: (c.documentos||[]).map(d => ({
         ...d,
@@ -1798,7 +1891,7 @@ function cargarDesdeCache() {
   if (!raw) return;
   try {
     const { clientes, ts } = JSON.parse(raw);
-    DB = clientes;
+    DB = (clientes||[]).map(normalizarCliente);
     const nd = DB.filter(c => c.documentos.length).length;
     const fh = new Date(ts).toLocaleString('es-CL', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
     document.getElementById('bannerTxt').textContent = `📦 ${DB.length} clientes (caché offline)`;
@@ -2412,7 +2505,7 @@ async function cargarTelefonica(){
     const res=await fetch(url);
     const json=JSON.parse(await res.text());
     if(!json.ok) throw new Error(json.error||'Error');
-    DBTel=(json.data.clientes||[]).map(c=>({...c,documentos:(c.documentos||[]).map(d=>({...d,vencimiento:excelDateToStr(d.vencimiento)}))}));
+    DBTel=(json.data.clientes||[]).map(c=>normalizarCliente({...c,documentos:(c.documentos||[]).map(d=>({...d,vencimiento:excelDateToStr(d.vencimiento)}))}));
     localStorage.setItem('dbtel_cache',JSON.stringify({clientes:DBTel,ts:json.data.ts}));
     pintarTelEstado(DBTel.length, DBTel.filter(c=>c.documentos.length).length, json.data.ts, false);
     showToast(`✅ ${DBTel.length} clientes en tu cartera`,'ok');
@@ -2425,7 +2518,7 @@ async function cargarTelefonica(){
 }
 function cargarTelCache(){
   const raw=localStorage.getItem('dbtel_cache'); if(!raw)return;
-  try{ const {clientes,ts}=JSON.parse(raw); DBTel=clientes;
+  try{ const {clientes,ts}=JSON.parse(raw); DBTel=(clientes||[]).map(normalizarCliente);
     pintarTelEstado(DBTel.length, DBTel.filter(c=>c.documentos.length).length, ts, true);
     showToast('📦 Cartera desde caché','ok');
   }catch(e){}
@@ -2477,6 +2570,14 @@ function mostrarFichaTel(c){
   document.getElementById('telFCiu').textContent=c.ciudad||'—';
   document.getElementById('telFEmail').textContent=c.email||'—';
   document.getElementById('telFTel').textContent=c.telefono||'—';
+  document.getElementById('telFMovil').textContent=c.movil||'—';
+  document.getElementById('telFVen').textContent=c.vendedor||'—';
+  document.getElementById('telFCond').textContent=c.condicion_pago||'—';
+  document.getElementById('telFCred').textContent=fmtCLP(c.credito);
+  const _totT=(c.total_adeudado!==undefined&&String(c.total_adeudado).trim()!=='')?c.total_adeudado:(c.monto_total||'');
+  document.getElementById('telFTot').textContent=fmtCLP(_totT);
+  document.getElementById('telFLin').textContent=fmtCLP(c.linea_disponible);
+  document.getElementById('telFCom').textContent=c.comentario||'—';
   document.getElementById('telFicha').classList.add('on');
 }
 function mostrarDeudaTel(c){
