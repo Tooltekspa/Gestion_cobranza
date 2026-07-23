@@ -287,18 +287,28 @@ tr:hover td{background:var(--pale)}
 .badge-prot{display:inline-block;background:#FBEAEA;color:#C62828;border:1px solid #E5A5A5;
   border-radius:10px;font-size:10px;font-weight:700;padding:1px 7px;margin-left:5px;vertical-align:middle}
 .riesgo-card{display:none;background:#FFF;border:1px solid #E5A5A5;border-left:4px solid #C62828;
-  border-radius:10px;padding:12px 14px;margin:10px 0;font-size:13px}
+  border-radius:10px;margin:10px 0;font-size:13px;overflow:hidden;box-shadow:var(--sh)}
 .riesgo-card.on{display:block}
 .riesgo-card.rc-ok{border-color:#BFDCC1;border-left-color:#2E7D32}
-.riesgo-card h4{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#C62828;margin:0 0 8px}
-.riesgo-card.rc-ok h4{color:#2E7D32}
-.riesgo-resumen{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px;font-size:13px}
+.riesgo-card h4{font-size:.7rem;text-transform:uppercase;letter-spacing:1.2px;color:#C62828;
+  margin:0;padding:9px 16px;background:linear-gradient(90deg,#FBEAEA,#fff);border-bottom:2px solid #E5A5A5;font-weight:700}
+.riesgo-card.rc-ok h4{color:#2E7D32;background:linear-gradient(90deg,#EAF7EC,#fff);border-bottom-color:#BFDCC1}
+.riesgo-body{padding:12px 14px}
+.riesgo-card.rc-ok .riesgo-body{display:none}
+.riesgo-resumen{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:13px}
 .riesgo-resumen b{font-variant-numeric:tabular-nums}
 .riesgo-resumen .rr-rojo{color:#C62828}
+.riesgo-twrap{overflow-x:auto}
 .riesgo-card table{width:100%;border-collapse:collapse;font-size:12px}
-.riesgo-card th{text-align:left;color:#7A8791;font-weight:600;padding:4px 6px;border-bottom:1px solid #EDF0F3}
-.riesgo-card td{padding:5px 6px;border-bottom:1px solid #F3F5F7}
+.riesgo-card th{text-align:left;background:var(--pale);color:var(--dk);font-weight:700;font-size:.65rem;
+  text-transform:uppercase;letter-spacing:.8px;padding:7px 9px;border-bottom:2px solid var(--bdr);white-space:nowrap}
+.riesgo-card td{padding:7px 9px;border-bottom:1px solid #F3F5F7;white-space:nowrap}
 .riesgo-card td.td-r{text-align:right;font-variant-numeric:tabular-nums}
+.riesgo-card td.monto-prot{color:#C62828;font-weight:700}
+.est-chip{display:inline-block;padding:2px 9px;border-radius:100px;font-size:.67rem;font-weight:700;white-space:nowrap}
+.est-pend{background:#FBEAEA;color:#C62828}
+.est-ok{background:#EAF7EC;color:#2E7D32}
+.est-otro{background:#FEF9E7;color:#B7860B}
 .riesgo-off{color:#7A8791;font-style:italic;font-size:12px}
 </style>
 </head>
@@ -1229,7 +1239,7 @@ const CONFIG = {
 ════════════════════════════════════════ */
 const CRUCE = {
   URL: 'https://script.google.com/macros/s/AKfycbw2h0JtLPs5zJo7akNNx3RMBCPonk2opRnNaDOwRjU6xU_R3rVMum7rY9EPaPlsh5dPOg/exec',
-  KEY: 'PEGAR_HASH_SHA256_DE_LA_CREDENCIAL',
+  KEY: '3656f13f5ce0f98968662e9863dd25fceee49fb688ddfc36771b938af16f7c37',
   CACHE_MS: 10 * 60 * 1000   // refresca alertas cada 10 min
 };
 
@@ -1266,6 +1276,22 @@ function badgeProt(rut){
   return `<span class="badge-prot">⚠️ ${a.cheques} protesto${a.cheques>1?'s':''}</span>`;
 }
 
+function chipEstado(est){
+  const e = String(est||'').trim();
+  if(!e) return '—';
+  const el = e.toLowerCase();
+  let cls = 'est-otro';
+  if(/pendiente|protestad|vigente|impago/.test(el)) cls = 'est-pend';
+  else if(/aclarad|pagad|regulariz|recuperad|cerrad/.test(el)) cls = 'est-ok';
+  return `<span class="est-chip ${cls}">${e}</span>`;
+}
+
+function esVigente(est){
+  const el = String(est||'').trim().toLowerCase();
+  if(!el) return true;                      // sin estado conocido → se asume vigente
+  return !/aclarad|pagad|regulariz|recuperad|cerrad|anulad/.test(el);
+}
+
 async function renderPanelRiesgo(rut, contId){
   const cont = document.getElementById(contId);
   if(!cont) return;
@@ -1284,13 +1310,15 @@ async function renderPanelRiesgo(rut, contId){
 
   const clp = v => '$' + Math.round(v||0).toLocaleString('es-CL');
   cont.classList.add('on');
-  cont.innerHTML = `<h4>⚠️ Cheques protestados</h4>
-    <div class="riesgo-resumen">
-      <span>Cheques: <b class="rr-rojo">${alerta.cheques}</b></span>
-      <span>Protestado: <b class="rr-rojo">${clp(alerta.montoProtestado)}</b></span>
-      <span>Exposición: <b>${clp((alerta.totalVencido||0) + (alerta.montoProtestado||0))}</b></span>
-    </div>
-    <div class="riesgo-off">Cargando detalle…</div>`;
+  cont.innerHTML = `<h4 id="${contId}_titulo">⚠️ Cheques protestados (${alerta.cheques})</h4>
+    <div class="riesgo-body">
+      <div class="riesgo-resumen" id="${contId}_resumen">
+        <span>Cheques: <b class="rr-rojo">${alerta.cheques}</b></span>
+        <span>Protestado: <b class="rr-rojo">${clp(alerta.montoProtestado)}</b></span>
+        <span>Exposición: <b>${clp((alerta.totalVencido||0) + (alerta.montoProtestado||0))}</b></span>
+      </div>
+      <div class="riesgo-off">Cargando detalle…</div>
+    </div>`;
 
   // Detalle bajo demanda (cache por sesión)
   let ficha = _fichasRiesgo[rutN];
@@ -1306,13 +1334,35 @@ async function renderPanelRiesgo(rut, contId){
     det.textContent = 'Detalle no disponible sin conexión.';
     return;
   }
-  det.outerHTML = `<table>
-    <thead><tr><th>N° Cheque</th><th>F. Rechazo</th><th style="text-align:right">Monto</th><th>Motivo</th></tr></thead>
+
+  // Con detalle: distinguir protestos VIGENTES (pendientes) de los aclarados
+  const vigentes  = ficha.cheques.filter(c => esVigente(c.estado));
+  const montoVig  = vigentes.reduce((s,c) => s + (Number(c.monto)||0), 0);
+  const titulo    = document.getElementById(contId + '_titulo');
+  const resumen   = document.getElementById(contId + '_resumen');
+
+  if(!vigentes.length){
+    // Todos los protestos históricos están aclarados
+    if(titulo)  titulo.innerHTML = `✔ Sin protestos vigentes (${ficha.cheques.length} aclarado${ficha.cheques.length>1?'s':''})`;
+    cont.classList.add('rc-ok');
+    cont.querySelector('.riesgo-body').style.display = 'block';   // mantiene visible el historial
+    if(resumen) resumen.innerHTML = `<span>Historial: <b>${ficha.cheques.length}</b> cheque${ficha.cheques.length>1?'s':''} protestado${ficha.cheques.length>1?'s':''}, todos aclarados</span>`;
+  }else{
+    if(titulo)  titulo.innerHTML = `⚠️ Cheques protestados (${vigentes.length})`;
+    if(resumen) resumen.innerHTML = `
+        <span>Vigentes: <b class="rr-rojo">${vigentes.length}</b></span>
+        <span>Monto vigente: <b class="rr-rojo">${clp(montoVig)}</b></span>
+        <span>Exposición: <b>${clp((alerta.totalVencido||0) + montoVig)}</b></span>`;
+  }
+
+  det.outerHTML = `<div class="riesgo-twrap"><table>
+    <thead><tr><th>N° Cheque</th><th>F. Rechazo</th><th style="text-align:right">Monto</th><th>Motivo</th><th>Estado</th></tr></thead>
     <tbody>${ficha.cheques.map(c=>`<tr>
       <td>${c.numero||'—'}</td><td>${c.fechaRechazo||'—'}</td>
-      <td class="td-r">${clp(c.monto)}</td><td>${c.motivo||'—'}</td>
+      <td class="td-r monto-prot">${clp(c.monto)}</td><td>${c.motivo||'—'}</td>
+      <td>${chipEstado(c.estado)}</td>
     </tr>`).join('')}</tbody>
-  </table>`;
+  </table></div>`;
 }
 
 document.addEventListener("DOMContentLoaded",()=>{
