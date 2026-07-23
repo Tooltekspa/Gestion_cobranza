@@ -2,7 +2,7 @@
    SERVICE WORKER — Cobranza Tooltek v2
 ══════════════════════════════════════════════════ */
 
-const CACHE  = 'cobranza-v3';
+const CACHE  = 'cobranza-v4';
 const ASSETS = [
   '/Gestion_cobranza/',
   '/Gestion_cobranza/index.html',
