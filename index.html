@@ -1237,7 +1237,7 @@ const CONFIG = {
    ► KEY: misma API_KEY definida en el Code.gs del Gestor
 ════════════════════════════════════════ */
 const CRUCE = {
-  URL: 'https://script.google.com/macros/s/AKfycbw2h0JtLPs5zJo7akNNx3RMBCPonk2opRnNaDOwRjU6xU_R3rVMum7rY9EPaPlsh5dPOg/exec',
+  URL: 'https://script.google.com/macros/s/AKfycbxdfEPB4ybESUHg1iEgrB9kgCye5P_bM9sI0PZQOYdCVxj71V-axkFD35QAePO9mBr0jA/exec',
   KEY: 'f54344c33615a34f2a2e963e3861c2330f91243243999230a3ab3d1abecb4b4c',
   CACHE_MS: 10 * 60 * 1000   // refresca alertas cada 10 min
 };
@@ -1281,14 +1281,14 @@ function chipEstado(est){
   const el = e.toLowerCase();
   let cls = 'est-otro';
   if(/pendiente|protestad|vigente|impago/.test(el)) cls = 'est-pend';
-  else if(/aclarad|pagad|regulariz|recuperad|cerrad/.test(el)) cls = 'est-ok';
+  else if(/resuelt|aclarad|pagad|regulariz|recuperad|cerrad/.test(el)) cls = 'est-ok';
   return `<span class="est-chip ${cls}">${e}</span>`;
 }
 
 function esVigente(est){
   const el = String(est||'').trim().toLowerCase();
   if(!el) return true;                      // sin estado conocido → se asume vigente
-  return !/aclarad|pagad|regulariz|recuperad|cerrad|anulad/.test(el);
+  return !/resuelt|cancelad|aclarad|pagad|regulariz|recuperad|cerrad|anulad/.test(el);
 }
 
 async function renderPanelRiesgo(rut, contId){
@@ -1342,10 +1342,10 @@ async function renderPanelRiesgo(rut, contId){
 
   if(!vigentes.length){
     // Todos los protestos históricos están aclarados
-    if(titulo)  titulo.innerHTML = `✔ Sin protestos vigentes (${ficha.cheques.length} aclarado${ficha.cheques.length>1?'s':''})`;
+    if(titulo)  titulo.innerHTML = `✔ Sin protestos vigentes (${ficha.cheques.length} resuelto${ficha.cheques.length>1?'s':''})`;
     cont.classList.add('rc-ok');
     cont.querySelector('.riesgo-body').style.display = 'block';   // mantiene visible el historial
-    if(resumen) resumen.innerHTML = `<span>Historial: <b>${ficha.cheques.length}</b> cheque${ficha.cheques.length>1?'s':''} protestado${ficha.cheques.length>1?'s':''}, todos aclarados</span>`;
+    if(resumen) resumen.innerHTML = `<span>Historial: <b>${ficha.cheques.length}</b> cheque${ficha.cheques.length>1?'s':''} protestado${ficha.cheques.length>1?'s':''}, todos resueltos</span>`;
   }else{
     if(titulo)  titulo.innerHTML = `⚠️ Cheques protestados (${vigentes.length})`;
     if(resumen) resumen.innerHTML = `
