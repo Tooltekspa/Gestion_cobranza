@@ -1232,14 +1232,13 @@ const CONFIG = {
 };
 
 /* ════════════════════════════════════════
-   CRUCE CHEQUES PROTESTADOS (servicio tesorería)
-   ► CRUCE_KEY: SHA-256 de la credencial de servicio.
-     Debe existir como PWA_HASH (o ADMIN_HASH) en las
-     Script Properties del GAS del cruce.
+   CRUCE CHEQUES PROTESTADOS (Gestor de Cheques Rechazados)
+   ► URL: implementación /exec del GAS del Gestor de Cheques
+   ► KEY: misma API_KEY definida en el Code.gs del Gestor
 ════════════════════════════════════════ */
 const CRUCE = {
   URL: 'https://script.google.com/macros/s/AKfycbw2h0JtLPs5zJo7akNNx3RMBCPonk2opRnNaDOwRjU6xU_R3rVMum7rY9EPaPlsh5dPOg/exec',
-  KEY: '3656f13f5ce0f98968662e9863dd25fceee49fb688ddfc36771b938af16f7c37',
+  KEY: 'f54344c33615a34f2a2e963e3861c2330f91243243999230a3ab3d1abecb4b4c',
   CACHE_MS: 10 * 60 * 1000   // refresca alertas cada 10 min
 };
 
